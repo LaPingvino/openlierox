@@ -54,6 +54,12 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addIncludePath(b.path("optional-includes/generated"));
     exe.root_module.addIncludePath(b.path("libs/pstreams"));
 
+    // System library includes
+    // libxml2 headers are typically in /usr/include/libxml2 on Linux
+    if (target.result.os.tag != .windows) {
+        exe.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/libxml2" });
+    }
+
     // Builtin libraries (vendored)
     addHawkNL(b, exe, target, optimize);
     addLibZip(b, exe, target, optimize);
@@ -121,7 +127,6 @@ fn getCxxFlags(target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeM
     const flags = [_][]const u8{
         "-std=c++11",
         "-Wall",
-        "-fno-exceptions",
     };
 
     if (target.result.os.tag == .windows) {

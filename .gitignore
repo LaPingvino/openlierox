@@ -53,3 +53,6 @@ PrecompiledHeader.*
 *openlierox_pch_dephelp.*
 
 distrib
+
+# Zig elements
+.zig-cache
