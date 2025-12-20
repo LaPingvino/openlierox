@@ -35,7 +35,7 @@ jobs:
             libopenal-dev \
             libalut-dev \
             libvorbis-dev \
-            freealut-dev || true
+             || true
 
       - name: Configure CMake
         run: |
