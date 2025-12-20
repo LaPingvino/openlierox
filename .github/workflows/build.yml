@@ -34,7 +34,8 @@ jobs:
             libboost-all-dev \
             libopenal-dev \
             libalut-dev \
-            libvorbis-dev || true
+            libvorbis-dev \
+            binutils-dev || true
 
       - name: Configure CMake
         run: |
