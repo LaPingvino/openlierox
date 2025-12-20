@@ -81,6 +81,20 @@ jobs:
 
       - name: Build
         run: cmake --build build-${{ matrix.name }} -j$(nproc)
+        continue-on-error: true
+        id: build
+
+      - name: Debug Makefile error
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "Build failed, checking Makefile around line 6690:"
+          if [ -f build-${{ matrix.name }}/CMakeFiles/openlierox.dir/build.make ]; then
+            sed -n '6685,6695p' build-${{ matrix.name }}/CMakeFiles/openlierox.dir/build.make
+            echo "---"
+            echo "Total lines in Makefile:"
+            wc -l build-${{ matrix.name }}/CMakeFiles/openlierox.dir/build.make
+          fi
+          exit 1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
