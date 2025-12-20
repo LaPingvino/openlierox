@@ -2,10 +2,10 @@ name: Build OpenLieroX
 
 on:
   push:
-    branches: ["0.59"]
+    branches: ["0.59", "main"]
     tags: ["*"]
   pull_request:
-    branches: ["0.59"]
+    branches: ["0.59", "main"]
 
 jobs:
   build:
