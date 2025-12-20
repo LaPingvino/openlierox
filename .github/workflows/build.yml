@@ -79,22 +79,36 @@ jobs:
             -DDEBUG=OFF \
             ${{ matrix.cmake_flags }}
 
-      - name: Build
-        run: cmake --build build-${{ matrix.name }} -j$(nproc)
-        continue-on-error: true
-        id: build
-
-      - name: Debug Makefile error
-        if: steps.build.outcome == 'failure'
+      - name: Build with error debugging
         run: |
-          echo "Build failed, checking Makefile around line 6690:"
-          if [ -f build-${{ matrix.name }}/CMakeFiles/openlierox.dir/build.make ]; then
-            sed -n '6685,6695p' build-${{ matrix.name }}/CMakeFiles/openlierox.dir/build.make
-            echo "---"
-            echo "Total lines in Makefile:"
-            wc -l build-${{ matrix.name }}/CMakeFiles/openlierox.dir/build.make
+          set +e
+          BUILD_OUTPUT=$(cmake --build build-${{ matrix.name }} -j$(nproc) 2>&1)
+          BUILD_EXIT=$?
+          echo "$BUILD_OUTPUT"
+
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo ""
+            echo "=== BUILD FAILED - Analyzing errors ==="
+            echo ""
+
+            # Extract Makefile errors with line numbers
+            echo "$BUILD_OUTPUT" | grep -E "\.make:[0-9]+:" | while read -r line; do
+              MAKEFILE=$(echo "$line" | sed -n 's/^\([^:]*\.make\):\([0-9]*\):.*/\1/p')
+              LINENO=$(echo "$line" | sed -n 's/^\([^:]*\.make\):\([0-9]*\):.*/\2/p')
+
+              if [ -n "$MAKEFILE" ] && [ -n "$LINENO" ] && [ -f "build-${{ matrix.name }}/$MAKEFILE" ]; then
+                echo "=== Error in $MAKEFILE at line $LINENO ==="
+                echo "--- Context (5 lines before and after) ---"
+                START=$((LINENO - 5))
+                END=$((LINENO + 5))
+                [ $START -lt 1 ] && START=1
+                sed -n "${START},${END}p" "build-${{ matrix.name }}/$MAKEFILE" | nl -v $START -w 6 -s ": "
+                echo ""
+              fi
+            done
+
+            exit $BUILD_EXIT
           fi
-          exit 1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
