@@ -237,11 +237,19 @@ fn linkSystemLibraries(b: *std.Build, exe: *std.Build.Step.Compile, target: std.
 
     const os_tag = target.result.os.tag;
 
-    // Add standard library search paths for Linux
+    // Add standard library search paths for cross-compilation
+    // This helps Zig find system libraries even when an explicit target is specified
     if (os_tag == .linux) {
         exe.addLibraryPath(.{ .cwd_relative = "/usr/lib" });
         exe.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
         exe.addLibraryPath(.{ .cwd_relative = "/usr/lib/aarch64-linux-gnu" });
+    } else if (os_tag == .macos) {
+        exe.addLibraryPath(.{ .cwd_relative = "/usr/lib" });
+        exe.addLibraryPath(.{ .cwd_relative = "/usr/local/lib" });
+        exe.addLibraryPath(.{ .cwd_relative = "/opt/homebrew/lib" });
+    } else if (os_tag == .windows) {
+        // Windows library paths would be added here if needed
+        // Typically handled through environment or pkg-config
     }
 
     // Common libraries across all platforms
