@@ -360,10 +360,21 @@ IF(BOOST_LINK_STATIC)
 	ENDIF(MINGW_CROSS_COMPILE)
 ELSE(BOOST_LINK_STATIC)
 	# Boost.Signals2 is header-only, we only need headers
-	FIND_PACKAGE(Boost REQUIRED)
-	IF(Boost_INCLUDE_DIRS)
-		INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
-	ENDIF(Boost_INCLUDE_DIRS)
+	# When using Zig cross-compilation, manually add Boost include path
+	# since FIND_PACKAGE won't work without system libraries
+	IF(CMAKE_CXX_COMPILER MATCHES "zig")
+		# Manually include Boost headers for Zig builds
+		# Use SYSTEM and AFTER to avoid interfering with Zig's libc++ headers
+		IF(EXISTS /usr/include/boost)
+			INCLUDE_DIRECTORIES(AFTER SYSTEM /usr/include)
+			MESSAGE("Using Zig - added /usr/include (AFTER SYSTEM) for Boost headers")
+		ENDIF()
+	ELSE()
+		FIND_PACKAGE(Boost REQUIRED)
+		IF(Boost_INCLUDE_DIRS)
+			INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+		ENDIF(Boost_INCLUDE_DIRS)
+	ENDIF()
 ENDIF(BOOST_LINK_STATIC)
 
 IF(APPLE)
