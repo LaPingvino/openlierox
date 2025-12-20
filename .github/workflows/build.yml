@@ -24,6 +24,10 @@ jobs:
             target: x86_64-windows-gnu
             cmake_flags: -DX11=OFF -DHASBFD=OFF
             exe_suffix: .exe
+          - name: windows-arm64
+            target: aarch64-windows-gnu
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            exe_suffix: .exe
 
     steps:
       - uses: actions/checkout@v4
