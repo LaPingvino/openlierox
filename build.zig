@@ -237,6 +237,13 @@ fn linkSystemLibraries(b: *std.Build, exe: *std.Build.Step.Compile, target: std.
 
     const os_tag = target.result.os.tag;
 
+    // Add standard library search paths for Linux
+    if (os_tag == .linux) {
+        exe.addLibraryPath(.{ .cwd_relative = "/usr/lib" });
+        exe.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        exe.addLibraryPath(.{ .cwd_relative = "/usr/lib/aarch64-linux-gnu" });
+    }
+
     // Common libraries across all platforms
     exe.linkSystemLibrary("curl");
     exe.linkSystemLibrary("xml2");
