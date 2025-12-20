@@ -364,10 +364,10 @@ ELSE(BOOST_LINK_STATIC)
 	# since FIND_PACKAGE won't work without system libraries
 	IF(CMAKE_CXX_COMPILER MATCHES "zig")
 		# Manually include Boost headers for Zig builds
-		# Use SYSTEM and AFTER to avoid interfering with Zig's libc++ headers
+		# Add as regular include - Zig's headers will still take precedence
 		IF(EXISTS /usr/include/boost)
-			INCLUDE_DIRECTORIES(AFTER SYSTEM /usr/include)
-			MESSAGE("Using Zig - added /usr/include (AFTER SYSTEM) for Boost headers")
+			INCLUDE_DIRECTORIES(/usr/include)
+			MESSAGE("Using Zig - added /usr/include for Boost headers")
 		ENDIF()
 	ELSE()
 		FIND_PACKAGE(Boost REQUIRED)
