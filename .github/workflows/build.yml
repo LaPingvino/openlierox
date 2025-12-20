@@ -1,0 +1,127 @@
+name: Build OpenLieroX
+
+on:
+  push:
+    branches: [ "0.59", "master" ]
+    tags: [ "*" ]
+  pull_request:
+    branches: [ "0.59", "master" ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          libsdl2-dev \
+          libsdl2-mixer-dev \
+          libsdl2-image-dev \
+          libgd-dev \
+          zlib1g-dev \
+          libzip-dev \
+          libxml2-dev \
+          libx11-dev \
+          libcurl4-gnutls-dev \
+          libboost-dev \
+          libopenal-dev \
+          libalut-dev \
+          libvorbis-dev \
+          freealut-dev || true
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DHAWKNL_BUILTIN=Yes \
+          -DDEBUG=OFF \
+          -DX11=ON
+
+    - name: Build
+      run: cmake --build build -j$(nproc)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: openlierox-linux-x64
+        path: build/bin/openlierox
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install \
+          cmake \
+          sdl2 \
+          sdl2_mixer \
+          sdl2_image \
+          gd \
+          libzip \
+          libxml2 \
+          freealut
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DHAWKNL_BUILTIN=Yes \
+          -DDEBUG=OFF
+
+    - name: Build
+      run: cmake --build build -j$(sysctl -n hw.ncpu)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: openlierox-macos
+        path: build/bin/openlierox
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-SDL2
+          mingw-w64-x86_64-SDL2_mixer
+          mingw-w64-x86_64-SDL2_image
+          mingw-w64-x86_64-gd
+          mingw-w64-x86_64-libzip
+          mingw-w64-x86_64-libxml2
+          mingw-w64-x86_64-curl
+          mingw-w64-x86_64-openal
+          mingw-w64-x86_64-freealut
+
+    - name: Configure and Build
+      shell: msys2 {0}
+      run: |
+        cmake -B build \
+          -G "MSYS Makefiles" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DHAWKNL_BUILTIN=Yes \
+          -DDEBUG=OFF
+        cmake --build build -j$(nproc)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: openlierox-windows-x64
+        path: build/bin/openlierox.exe
