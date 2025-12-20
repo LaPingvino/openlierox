@@ -53,6 +53,7 @@ jobs:
             libsdl2-image-dev \
             libcurl4-openssl-dev \
             libxml2-dev \
+            libicu-dev \
             zlib1g-dev \
             libgd-dev \
             libopenal-dev \
