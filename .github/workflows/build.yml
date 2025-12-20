@@ -2,10 +2,10 @@ name: Build OpenLieroX
 
 on:
   push:
-    branches: ["main"]
+    branches: ["0.59"]
     tags: ["*"]
   pull_request:
-    branches: ["main"]
+    branches: ["0.59"]
 
 jobs:
   build:
@@ -16,23 +16,23 @@ jobs:
         include:
           - name: linux-x64
             target: x86_64-linux-gnu
-            cmake_flags: -DX11=ON -DHASBFD=ON
+            zig_opts: -Dx11=true
           - name: linux-arm64
             target: aarch64-linux-gnu
-            cmake_flags: -DX11=ON -DHASBFD=OFF
+            zig_opts: -Dx11=true
           - name: macos-x64
             target: x86_64-macos-none
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            zig_opts: -Dx11=false
           - name: macos-arm64
             target: aarch64-macos-none
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            zig_opts: -Dx11=false
           - name: windows-x64
             target: x86_64-windows-gnu
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            zig_opts: -Dx11=false
             exe_suffix: .exe
           - name: windows-arm64
             target: aarch64-windows-gnu
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            zig_opts: -Dx11=false
             exe_suffix: .exe
 
     steps:
@@ -43,78 +43,34 @@ jobs:
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
+          version: 0.15.2
 
-      - name: Install build dependencies
+      - name: Install system dependencies (headers only for cross-compilation)
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake libboost-dev
+          sudo apt-get install -y \
+            libsdl2-dev \
+            libcurl4-openssl-dev \
+            libxml2-dev \
+            zlib1g-dev \
+            libgd-dev \
+            libopenal-dev \
+            libvorbis-dev \
+            libx11-dev
 
-      - name: Create Zig wrapper scripts
+      - name: Build with Zig
         run: |
-          mkdir -p ${{ github.workspace }}/zig-bin
+          zig build \
+            -Dtarget=${{ matrix.target }} \
+            -Doptimize=ReleaseFast \
+            ${{ matrix.zig_opts }}
 
-          cat > ${{ github.workspace }}/zig-bin/zigcc << 'CCEOF'
-          #!/bin/bash
-          exec zig cc -target ${{ matrix.target }} "$@"
-          CCEOF
-
-          cat > ${{ github.workspace }}/zig-bin/zigcxx << 'CXXEOF'
-          #!/bin/bash
-          exec zig c++ -target ${{ matrix.target }} "$@"
-          CXXEOF
-
-          chmod +x ${{ github.workspace }}/zig-bin/zigcc
-          chmod +x ${{ github.workspace }}/zig-bin/zigcxx
-
-      - name: Configure CMake
+      - name: List build output
         run: |
-          # Clean build directory to avoid cached sdl2-config results
-          rm -rf build-${{ matrix.name }}
-          cmake -B build-${{ matrix.name }} \
-            -DCMAKE_C_COMPILER=${{ github.workspace }}/zig-bin/zigcc \
-            -DCMAKE_CXX_COMPILER=${{ github.workspace }}/zig-bin/zigcxx \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DHAWKNL_BUILTIN=Yes \
-            -DLIBZIP_BUILTIN=Yes \
-            -DLIBLUA_BUILTIN=Yes \
-            -DDEBUG=OFF \
-            ${{ matrix.cmake_flags }}
-
-      - name: Build with error debugging
-        run: |
-          set +e
-          BUILD_OUTPUT=$(cmake --build build-${{ matrix.name }} -j$(nproc) 2>&1)
-          BUILD_EXIT=$?
-          echo "$BUILD_OUTPUT"
-
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo ""
-            echo "=== BUILD FAILED - Analyzing errors ==="
-            echo ""
-
-            # Extract Makefile errors with line numbers
-            echo "$BUILD_OUTPUT" | grep -E "\.make:[0-9]+:" | while read -r line; do
-              # Extract path and line number - handle both absolute and relative paths
-              MAKEFILE=$(echo "$line" | sed -n 's/^\(.*\.make\):\([0-9]*\):.*/\1/p' | sed 's|^.*/build-${{ matrix.name }}/||')
-              LINENO=$(echo "$line" | sed -n 's/^\(.*\.make\):\([0-9]*\):.*/\2/p')
-
-              if [ -n "$MAKEFILE" ] && [ -n "$LINENO" ] && [ -f "build-${{ matrix.name }}/$MAKEFILE" ]; then
-                echo "=== Error in $MAKEFILE at line $LINENO ==="
-                echo "--- Context (5 lines before and after) ---"
-                START=$((LINENO - 5))
-                END=$((LINENO + 5))
-                [ $START -lt 1 ] && START=1
-                sed -n "${START},${END}p" "build-${{ matrix.name }}/$MAKEFILE" | nl -v $START -w 6 -s ": "
-                echo ""
-              fi
-            done
-
-            exit $BUILD_EXIT
-          fi
+          ls -lah zig-out/bin/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: openlierox-${{ matrix.name }}
-          path: build-${{ matrix.name }}/bin/openlierox${{ matrix.exe_suffix || '' }}
+          path: zig-out/bin/openlierox${{ matrix.exe_suffix || '' }}
