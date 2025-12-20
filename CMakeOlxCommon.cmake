@@ -11,6 +11,7 @@ include(${OLXROOTDIR}/PCHSupport_26.cmake)
 
 
 SET(SYSTEM_DATA_DIR "/usr/share/games" CACHE STRING "system data dir")
+OPTION(USE_VCPKG "Use vcpkg for dependency management" Yes)
 OPTION(DEBUG "enable debug build" Yes)
 OPTION(DEDICATED_ONLY "dedicated_only - without gfx and sound" No)
 OPTION(G15 "G15 support" No)
@@ -461,5 +462,13 @@ ENDIF (NOT DEDICATED_ONLY)
 IF(MINGW_CROSS_COMPILE)
 	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
+
+# Use vcpkg dependencies if enabled
+IF(USE_VCPKG)
+	MESSAGE(STATUS "Using vcpkg for dependency management")
+	# Clear the manually-configured libraries and use vcpkg's find_package() instead
+	SET(LIBS "")
+	include(${OLXROOTDIR}/CMakeOlxVcpkg.cmake)
+ENDIF(USE_VCPKG)
 
 ADD_DEFINITIONS('-D SYSTEM_DATA_DIR=\"${SYSTEM_DATA_DIR}\"')

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "openlierox",
+  "version-string": "0.59",
+  "dependencies": [
+    "sdl2",
+    "sdl2-image",
+    "curl",
+    "libxml2",
+    "zlib",
+    {
+      "name": "libgd",
+      "platform": "!windows"
+    },
+    "openal-soft",
+    {
+      "name": "freealut",
+      "platform": "!windows"
+    },
+    "libvorbis",
+    "libogg"
+  ],
+  "builtin-baseline": "a1a1cbc975abf909a6c8985a6a2b8fe20bbd9bd6"
+}
