@@ -8,7 +8,7 @@
     {
       "name": "curl",
       "default-features": false,
-      "features": ["ssl", "mbedtls"]
+      "features": ["mbedtls"]
     },
     "libxml2",
     "zlib",
