@@ -8,19 +8,38 @@ on:
     branches: ["main"]
 
 jobs:
-  build-linux:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - {
+              name: "linux-x64",
+              triple: "x86_64-linux-gnu",
+              cmake_flags: "-DX11=ON",
+            }
+          - { name: "macos-x64", triple: "x86_64-macos-none", cmake_flags: "" }
+          - {
+              name: "windows-x64",
+              triple: "x86_64-windows-gnu",
+              cmake_flags: "",
+              exe_suffix: ".exe",
+            }
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for git describe to work
 
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
             cmake \
             libsdl2-dev \
             libsdl2-mixer-dev \
@@ -35,102 +54,23 @@ jobs:
             libopenal-dev \
             libalut-dev \
             libvorbis-dev \
-            binutils-dev || true
+            binutils-dev
 
-      - name: Configure CMake
+      - name: Configure CMake with Zig
         run: |
-          cmake -B build \
+          cmake -B build-${{ matrix.target.name }} \
+            -DCMAKE_C_COMPILER="zig;cc;-target;${{ matrix.target.triple }}" \
+            -DCMAKE_CXX_COMPILER="zig;c++;-target;${{ matrix.target.triple }}" \
             -DCMAKE_BUILD_TYPE=Release \
             -DHAWKNL_BUILTIN=Yes \
             -DDEBUG=OFF \
-            -DX11=ON
+            ${{ matrix.target.cmake_flags }}
 
       - name: Build
-        run: cmake --build build -j$(nproc)
+        run: cmake --build build-${{ matrix.target.name }} -j$(nproc)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: openlierox-linux-x64
-          path: build/bin/openlierox
-
-  build-macos:
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install dependencies
-        run: |
-          brew install \
-            cmake \
-            sdl2 \
-            sdl2_mixer \
-            sdl2_image \
-            gd \
-            libzip \
-            libxml2 \
-            freealut \
-            boost
-
-      - name: Configure CMake
-        run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DHAWKNL_BUILTIN=Yes \
-            -DDEBUG=OFF
-
-      - name: Build
-        run: cmake --build build -j$(sysctl -n hw.ncpu)
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: openlierox-macos
-          path: build/bin/openlierox
-
-  build-windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-make
-            mingw-w64-x86_64-SDL2
-            mingw-w64-x86_64-SDL2_mixer
-            mingw-w64-x86_64-SDL2_image
-            mingw-w64-x86_64-libgd
-            mingw-w64-x86_64-libzip
-            mingw-w64-x86_64-libxml2
-            mingw-w64-x86_64-curl
-            mingw-w64-x86_64-openal
-            mingw-w64-x86_64-freealut
-            mingw-w64-x86_64-boost
-
-      - name: Configure and Build
-        shell: msys2 {0}
-        run: |
-          cmake -B build \
-            -G "MSYS Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DHAWKNL_BUILTIN=Yes \
-            -DDEBUG=OFF
-          cmake --build build -j$(nproc)
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: openlierox-windows-x64
-          path: build/bin/openlierox.exe
+          name: openlierox-${{ matrix.target.name }}
+          path: build-${{ matrix.target.name }}/bin/openlierox${{ matrix.target.exe_suffix }}
