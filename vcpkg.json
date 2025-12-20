@@ -5,7 +5,11 @@
   "dependencies": [
     "sdl2",
     "sdl2-image",
-    "curl",
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": ["ssl", "mbedtls"]
+    },
     "libxml2",
     "zlib",
     {
