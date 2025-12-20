@@ -209,7 +209,7 @@ static Result translate_addresses_buf(bfd * abfd, bfd_vma addr, const std::strin
 	pc = addr;
 	sectionFound = false;
 	found = false;
-	bfd_map_over_sections(abfd, find_address_in_section, (PTR) NULL);
+	bfd_map_over_sections(abfd, find_address_in_section, (void*) NULL);
 
 	if (!found) {
 		if(sectionFound) return "function not found";

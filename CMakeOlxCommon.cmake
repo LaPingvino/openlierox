@@ -1,21 +1,13 @@
 # CMake common file for OpenLieroX
 # sets up the source lists and vars
 
-cmake_minimum_required(VERSION 2.4)
-IF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
-	if(COMMAND CMAKE_POLICY)
-		cmake_policy(VERSION 2.4)
-		cmake_policy(SET CMP0005 OLD)
-		cmake_policy(SET CMP0003 OLD)
-		# Policy CMP0011 was introduced in 2.6.3.
-		# We cannot do if(POLCY CMP0011) as a check because 2.4 would fail then.
-		if(${CMAKE_MAJOR_VERSION} GREATER 2 OR ${CMAKE_MINOR_VERSION} GREATER 6 OR ${CMAKE_PATCH_VERSION} GREATER 2)
-			# We explicitly want to export variables here.
-			cmake_policy(SET CMP0011 OLD)
-		endif(${CMAKE_MAJOR_VERSION} GREATER 2 OR ${CMAKE_MINOR_VERSION} GREATER 6 OR ${CMAKE_PATCH_VERSION} GREATER 2)
-	endif(COMMAND CMAKE_POLICY)
-	include(${OLXROOTDIR}/PCHSupport_26.cmake)
-ENDIF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
+cmake_minimum_required(VERSION 3.5)
+if(COMMAND CMAKE_POLICY)
+	cmake_policy(SET CMP0005 NEW)
+	cmake_policy(SET CMP0003 NEW)
+	cmake_policy(SET CMP0011 NEW)
+endif(COMMAND CMAKE_POLICY)
+include(${OLXROOTDIR}/PCHSupport_26.cmake)
 
 
 SET(SYSTEM_DATA_DIR "/usr/share/games" CACHE STRING "system data dir")
@@ -149,7 +141,7 @@ IF (BREAKPAD)
 
 	ELSE(MINGW_CROSS_COMPILE OR WIN32)
 		EXEC_PROGRAM(python ARGS ${CMAKE_CURRENT_SOURCE_DIR}/libs/breakpad_getallsources.py OUTPUT_VARIABLE BREAKPAD_SRCS)
-		SET(ALL_SRCS ${BREAKPAD_SRCS} ${ALL_SRCS})		
+		SET(ALL_SRCS ${BREAKPAD_SRCS} ${ALL_SRCS})
 	ENDIF(MINGW_CROSS_COMPILE OR WIN32)
 ELSE (BREAKPAD)
 	ADD_DEFINITIONS(-DNBREAKPAD)
@@ -205,7 +197,7 @@ ELSE (LIBLUA_BUILTIN)
 	IF(EXISTS /usr/include/lua5.1)
 		SET(LUA_SEARCHDIR /usr/include/lua5.1)
 	ENDIF(EXISTS /usr/include/lua5.1)
-	
+
 	#On some systems, e.g. Fedora, it may be lua-5.1
 	IF(NOT LUA_SEARCHDIR)
 		IF(EXISTS /usr/include/lua-5.1)
@@ -335,16 +327,13 @@ ENDIF(HASBFD)
 
 
 IF(BOOST_LINK_STATIC)
-	# seems this is the way for Debian:
-	SET(LIBS ${LIBS} boost_signals.a)
+	# Boost.Signals2 is header-only, no need for boost_signals library
 	IF(MINGW_CROSS_COMPILE)
 		SET(LIBS ${LIBS} boost_system.a)
 	ENDIF(MINGW_CROSS_COMPILE)
-	# and this on newer CMake (>=2.6?)
-	SET(LIBS ${LIBS} /usr/lib/x86_64-linux-gnu/libboost_signals.a /usr/lib/x86_64-linux-gnu/libboost_system.a)
 ELSE(BOOST_LINK_STATIC)
-	FIND_PACKAGE(Boost COMPONENTS system REQUIRED)
-	SET(LIBS ${LIBS} ${Boost_LIBRARIES})
+	# Boost.Signals2 is header-only, we only need headers
+	FIND_PACKAGE(Boost REQUIRED)
 ENDIF(BOOST_LINK_STATIC)
 
 IF(APPLE)
@@ -415,7 +404,7 @@ if(UNIX)
 			EXEC_PROGRAM(pkg-config ARGS lua --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #Search for lua if neither found
 		ENDIF(NOT LIBLUA_NAME)
 		IF(NOT LIBLUA_NAME)
-			MESSAGE(WARNING "No Lua found by pkg-config - trying default Lua, but it may not work. Make sure that Lua 5.1 packages are installed, or use the built-in library") 
+			MESSAGE(WARNING "No Lua found by pkg-config - trying default Lua, but it may not work. Make sure that Lua 5.1 packages are installed, or use the built-in library")
 			SET(LIBLUA_NAME lua) #Set default if nothing works, although this will likely lead to errors
 		ENDIF(NOT LIBLUA_NAME)
 		SET(LIBS ${LIBS} ${LIBLUA_NAME})
