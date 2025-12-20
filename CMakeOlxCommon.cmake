@@ -367,7 +367,6 @@ ELSE(BOOST_LINK_STATIC)
 		# Add as regular include - Zig's headers will still take precedence
 		IF(EXISTS /usr/include/boost)
 			INCLUDE_DIRECTORIES(/usr/include)
-			MESSAGE("Using Zig - added /usr/include for Boost headers")
 		ENDIF()
 	ELSE()
 		FIND_PACKAGE(Boost REQUIRED)

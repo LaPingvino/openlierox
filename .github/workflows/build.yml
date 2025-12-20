@@ -54,23 +54,23 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/zig-bin
 
-          cat > ${{ github.workspace }}/zig-bin/cc << 'CCEOF'
+          cat > ${{ github.workspace }}/zig-bin/zigcc << 'CCEOF'
           #!/bin/bash
           exec zig cc -target ${{ matrix.target }} "$@"
           CCEOF
 
-          cat > ${{ github.workspace }}/zig-bin/c++ << 'CXXEOF'
+          cat > ${{ github.workspace }}/zig-bin/zigcxx << 'CXXEOF'
           #!/bin/bash
           exec zig c++ -target ${{ matrix.target }} "$@"
           CXXEOF
 
-          chmod +x ${{ github.workspace }}/zig-bin/cc
-          chmod +x ${{ github.workspace }}/zig-bin/c++
+          chmod +x ${{ github.workspace }}/zig-bin/zigcc
+          chmod +x ${{ github.workspace }}/zig-bin/zigcxx
 
       - name: Configure CMake
         env:
-          CC: ${{ github.workspace }}/zig-bin/cc
-          CXX: ${{ github.workspace }}/zig-bin/c++
+          CC: ${{ github.workspace }}/zig-bin/zigcc
+          CXX: ${{ github.workspace }}/zig-bin/zigcxx
         run: |
           cmake -B build-${{ matrix.name }} \
             -DCMAKE_BUILD_TYPE=Release \
