@@ -127,6 +127,9 @@ fn getCxxFlags(target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeM
     const flags = [_][]const u8{
         "-std=c++11",
         "-Wall",
+        // Enable 64-bit time_t to avoid Y2038 problem
+        "-D_TIME_BITS=64",
+        "-D_FILE_OFFSET_BITS=64",
     };
 
     if (target.result.os.tag == .windows) {
