@@ -19,20 +19,20 @@ jobs:
             zig_opts: -Dx11=true
           - name: linux-arm64
             target: aarch64-linux-gnu
-            zig_opts: -Dx11=true -Ddedicated-only=true
+            zig_opts: -Dx11=true
           - name: macos-x64
             target: x86_64-macos-none
-            zig_opts: -Dx11=false -Ddedicated-only=true
+            zig_opts: -Dx11=false
           - name: macos-arm64
             target: aarch64-macos-none
-            zig_opts: -Dx11=false -Ddedicated-only=true
+            zig_opts: -Dx11=false
           - name: windows-x64
             target: x86_64-windows-gnu
-            zig_opts: -Dx11=false -Ddedicated-only=true
+            zig_opts: -Dx11=false
             exe_suffix: .exe
           - name: windows-arm64
             target: aarch64-windows-gnu
-            zig_opts: -Dx11=false -Ddedicated-only=true
+            zig_opts: -Dx11=false
             exe_suffix: .exe
 
     steps:
