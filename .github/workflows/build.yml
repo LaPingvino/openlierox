@@ -68,11 +68,10 @@ jobs:
           chmod +x ${{ github.workspace }}/zig-bin/zigcxx
 
       - name: Configure CMake
-        env:
-          CC: ${{ github.workspace }}/zig-bin/zigcc
-          CXX: ${{ github.workspace }}/zig-bin/zigcxx
         run: |
           cmake -B build-${{ matrix.name }} \
+            -DCMAKE_C_COMPILER=${{ github.workspace }}/zig-bin/zigcc \
+            -DCMAKE_CXX_COMPILER=${{ github.workspace }}/zig-bin/zigcxx \
             -DCMAKE_BUILD_TYPE=Release \
             -DHAWKNL_BUILTIN=Yes \
             -DLIBZIP_BUILTIN=Yes \
