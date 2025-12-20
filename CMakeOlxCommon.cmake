@@ -1,7 +1,7 @@
 # CMake common file for OpenLieroX
 # sets up the source lists and vars
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 if(COMMAND CMAKE_POLICY)
 	cmake_policy(SET CMP0005 NEW)
 	cmake_policy(SET CMP0003 NEW)

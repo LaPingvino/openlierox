@@ -1,6 +1,6 @@
 # CMake file for development of OLX
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(OpenLieroX)
 
 # Note: This must be a relative path because AUX_SOURCE_DIRECTORY would not work otherwise with CMake 2.4
