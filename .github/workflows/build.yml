@@ -72,6 +72,8 @@ jobs:
             --triplet=${{ matrix.vcpkg_triplet }} \
             --overlay-triplets=${{ github.workspace }}/triplets \
             --x-install-root=${{ github.workspace }}/vcpkg_installed
+        env:
+          ZIG_TARGET: ${{ matrix.target }}
 
       - name: Configure CMake with vcpkg and Zig
         run: |
