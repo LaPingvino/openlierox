@@ -31,7 +31,7 @@ jobs:
             libxml2-dev \
             libx11-dev \
             libcurl4-gnutls-dev \
-            libboost-all-dev \
+            libboost-dev \
             libopenal-dev \
             libalut-dev \
             libvorbis-dev \
