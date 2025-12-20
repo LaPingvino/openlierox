@@ -119,10 +119,13 @@ IF(ADVASSERT)
 ENDIF(ADVASSERT)
 
 # TODO: don't hardcode path here
-IF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
-	INCLUDE_DIRECTORIES(/usr/include/libxml2)
-	INCLUDE_DIRECTORIES(/usr/local/include/libxml2)
-ENDIF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
+# Skip system includes when using Zig to avoid conflicts with Zig's libc
+IF(NOT CMAKE_CXX_COMPILER MATCHES "zig")
+	IF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
+		INCLUDE_DIRECTORIES(/usr/include/libxml2)
+		INCLUDE_DIRECTORIES(/usr/local/include/libxml2)
+	ENDIF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
+ENDIF()
 
 
 file(GLOB_RECURSE ALL_SRCS ${OLXROOTDIR}/src/*.c*)
@@ -303,9 +306,12 @@ ELSEIF(APPLE)
 ELSEIF(MINGW_CROSS_COMPILE)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/mingw/include/SDL)
 ELSE()
-	EXEC_PROGRAM(sdl2-config ARGS --cflags OUTPUT_VARIABLE SDLCFLAGS)
-	string(REGEX REPLACE "[\r\n]" " " SDLCFLAGS "${SDLCFLAGS}")
-	ADD_DEFINITIONS(${SDLCFLAGS})
+	# Skip sdl2-config when using Zig to avoid system include conflicts
+	IF(NOT CMAKE_CXX_COMPILER MATCHES "zig")
+		EXEC_PROGRAM(sdl2-config ARGS --cflags OUTPUT_VARIABLE SDLCFLAGS)
+		string(REGEX REPLACE "[\r\n]" " " SDLCFLAGS "${SDLCFLAGS}")
+		ADD_DEFINITIONS(${SDLCFLAGS})
+	ENDIF()
 endif(WIN32)
 
 
@@ -383,8 +389,14 @@ ELSEIF(APPLE)
 ELSEIF(MINGW_CROSS_COMPILE)
 
 ELSE()
-	EXEC_PROGRAM(sdl2-config ARGS --libs OUTPUT_VARIABLE SDLLIBS)
-	STRING(REGEX REPLACE "[\r\n]" " " SDLLIBS "${SDLLIBS}")
+	# Skip sdl2-config when using Zig to avoid system library conflicts
+	IF(NOT CMAKE_CXX_COMPILER MATCHES "zig")
+		EXEC_PROGRAM(sdl2-config ARGS --libs OUTPUT_VARIABLE SDLLIBS)
+		STRING(REGEX REPLACE "[\r\n]" " " SDLLIBS "${SDLLIBS}")
+	ELSE()
+		# When using Zig, just specify the library names directly
+		SET(SDLLIBS "")
+	ENDIF()
 ENDIF(WIN32)
 
 if(UNIX)
