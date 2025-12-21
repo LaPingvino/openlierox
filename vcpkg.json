@@ -3,8 +3,15 @@
   "name": "openlierox",
   "version-string": "0.59",
   "dependencies": [
-    "sdl2",
-    "sdl2-image",
+    {
+      "name": "sdl2",
+      "default-features": false,
+      "features": ["x11"]
+    },
+    {
+      "name": "sdl2-image",
+      "default-features": false
+    },
     {
       "name": "curl",
       "default-features": false,
