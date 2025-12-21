@@ -11,6 +11,9 @@ find_package(ZLIB REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 find_package(Vorbis CONFIG REQUIRED)
 
+# Set up include directories
+include_directories(${Boost_INCLUDE_DIRS})
+
 # Find optional packages
 if(NOT WIN32)
     # libgd uses pkg-config
