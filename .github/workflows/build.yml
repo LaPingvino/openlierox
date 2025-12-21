@@ -11,20 +11,56 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
-  build-linux:
-    name: Build Linux
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Linux builds - use vcpkg x64-linux triplet, Zig for cross-compilation
           - name: linux-x64
-            arch: x64
+            os: ubuntu-latest
+            vcpkg_triplet: x64-linux
+            zig_target: x86_64-linux-gnu
+            use_zig: false
             cmake_flags: -DX11=ON -DHASBFD=ON
           - name: linux-arm64
-            arch: arm64
+            os: ubuntu-latest
+            vcpkg_triplet: x64-linux
+            zig_target: aarch64-linux-gnu
+            use_zig: true
             cmake_flags: -DX11=ON -DHASBFD=OFF
-            # Note: ARM64 will use Zig cross-compilation from x64 dependencies
+
+          # macOS builds - use vcpkg osx triplet
+          - name: macos-x64
+            os: macos-13 # Intel Mac
+            vcpkg_triplet: x64-osx
+            zig_target: x86_64-macos-none
+            use_zig: false
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+          - name: macos-arm64
+            os: macos-14 # Apple Silicon
+            vcpkg_triplet: arm64-osx
+            zig_target: aarch64-macos-none
+            use_zig: false
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+
+          # Windows builds - use vcpkg x64-windows triplet, Zig for cross-compilation
+          - name: windows-x64
+            os: windows-latest
+            vcpkg_triplet: x64-windows
+            zig_target: x86_64-windows-gnu
+            use_zig: false
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            exe_suffix: .exe
+          - name: windows-arm64
+            os: windows-latest
+            vcpkg_triplet: x64-windows
+            zig_target: aarch64-windows-gnu
+            use_zig: true
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            exe_suffix: .exe
 
     steps:
       - uses: actions/checkout@v4
@@ -49,33 +85,35 @@ jobs:
           vcpkgGitCommitId: "a1a1cbc975abf909a6c8985a6a2b8fe20bbd9bd6"
 
       - name: Install vcpkg dependencies
+        shell: bash
         run: |
-          # Install x64 dependencies - will be used directly for x64, cross-linked for ARM64
           $VCPKG_ROOT/vcpkg install \
-            --triplet=x64-linux \
+            --triplet=${{ matrix.vcpkg_triplet }} \
             --x-install-root=${{ github.workspace }}/vcpkg_installed
 
-      - name: Create Zig cross-compilation wrapper (ARM64 only)
-        if: matrix.arch == 'arm64'
+      - name: Create Zig wrapper scripts (cross-compilation only)
+        if: matrix.use_zig
+        shell: bash
         run: |
           mkdir -p ${{ github.workspace }}/zig-bin
           cat > ${{ github.workspace }}/zig-bin/zig-cc << 'EOF'
           #!/bin/bash
-          exec zig cc -target aarch64-linux-gnu "$@"
+          exec zig cc -target ${{ matrix.zig_target }} "$@"
           EOF
           cat > ${{ github.workspace }}/zig-bin/zig-cxx << 'EOF'
           #!/bin/bash
-          exec zig c++ -target aarch64-linux-gnu "$@"
+          exec zig c++ -target ${{ matrix.zig_target }} "$@"
           EOF
           chmod +x ${{ github.workspace }}/zig-bin/zig-cc
           chmod +x ${{ github.workspace }}/zig-bin/zig-cxx
 
-      - name: Configure CMake (x64)
-        if: matrix.arch == 'x64'
+      - name: Configure CMake (native build)
+        if: ${{ !matrix.use_zig }}
+        shell: bash
         run: |
           cmake -B build \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
-            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
             -DCMAKE_BUILD_TYPE=Release \
             -DUSE_VCPKG=ON \
             -DHAWKNL_BUILTIN=Yes \
@@ -84,12 +122,13 @@ jobs:
             -DDEBUG=OFF \
             ${{ matrix.cmake_flags }}
 
-      - name: Configure CMake (ARM64 with Zig)
-        if: matrix.arch == 'arm64'
+      - name: Configure CMake (Zig cross-compilation)
+        if: matrix.use_zig
+        shell: bash
         run: |
           cmake -B build \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
-            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
             -DCMAKE_C_COMPILER=${{ github.workspace }}/zig-bin/zig-cc \
             -DCMAKE_CXX_COMPILER=${{ github.workspace }}/zig-bin/zig-cxx \
             -DCMAKE_BUILD_TYPE=Release \
@@ -101,13 +140,23 @@ jobs:
             ${{ matrix.cmake_flags }}
 
       - name: Build
-        run: cmake --build build -j$(nproc)
+        shell: bash
+        run: cmake --build build -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 
       - name: List build output
-        run: ls -lah build/bin/
+        shell: bash
+        run: ls -lah build/bin/ || ls -lah build/Release/ || ls -lah build/Debug/ || true
 
-      - name: Upload artifact
+      - name: Upload artifact (Unix)
+        if: runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: openlierox-${{ matrix.name }}
           path: build/bin/openlierox
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlierox-${{ matrix.name }}
+          path: build/bin/openlierox.exe
