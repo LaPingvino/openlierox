@@ -79,11 +79,11 @@ jobs:
         with:
           version: 0.15.2
 
-      - name: Install autotools (Linux)
+      - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool pkg-config gettext autopoint gperf libltdl-dev
+          sudo apt-get install -y autoconf automake libtool pkg-config gettext autopoint gperf libltdl-dev libx11-dev
 
       - name: Install autotools (macOS)
         if: runner.os == 'macOS'

@@ -13,10 +13,14 @@ find_package(Vorbis CONFIG REQUIRED)
 
 # Find optional packages
 if(NOT WIN32)
-    find_package(GD)
+    # libgd uses pkg-config
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GD IMPORTED_TARGET gdlib)
+
     find_package(FREEALUT CONFIG)
 endif()
 
+# X11 is a system library on Linux, not from vcpkg
 if(X11)
     find_package(X11 REQUIRED)
 endif()
@@ -57,9 +61,9 @@ if(NOT DEDICATED_ONLY)
         Vorbis::vorbisenc
     )
 
-    # Graphics library
+    # Graphics library (using pkg-config)
     if(GD_FOUND)
-        list(APPEND VCPKG_LIBS GD::GD)
+        list(APPEND VCPKG_LIBS PkgConfig::GD)
     endif()
 endif()
 
