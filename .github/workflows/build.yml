@@ -34,13 +34,13 @@ jobs:
 
           # macOS builds - use vcpkg osx triplet
           - name: macos-x64
-            os: macos-13 # Intel Mac
+            os: macos-15-intel # Intel Mac (replaces deprecated macos-13)
             vcpkg_triplet: x64-osx
             zig_target: x86_64-macos-none
             use_zig: false
             cmake_flags: -DX11=OFF -DHASBFD=OFF
           - name: macos-arm64
-            os: macos-14 # Apple Silicon
+            os: macos-latest # Apple Silicon (macos-15)
             vcpkg_triplet: arm64-osx
             zig_target: aarch64-macos-none
             use_zig: false
