@@ -3,10 +3,7 @@
   "name": "openlierox",
   "version-string": "0.59",
   "dependencies": [
-    {
-      "name": "sdl2",
-      "default-features": false
-    },
+    "sdl2",
     {
       "name": "sdl2-image",
       "default-features": false
