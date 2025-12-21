@@ -4,7 +4,7 @@
 # Find all required packages from vcpkg
 find_package(Boost REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
-find_package(sdl2-image CONFIG REQUIRED)
+find_package(SDL2_image CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(ZLIB REQUIRED)
