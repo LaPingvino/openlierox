@@ -83,7 +83,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool pkg-config gettext autopoint gperf
+          sudo apt-get install -y autoconf automake libtool pkg-config gettext autopoint gperf libltdl-dev
 
       - name: Install autotools (macOS)
         if: runner.os == 'macOS'
