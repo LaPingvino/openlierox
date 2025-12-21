@@ -2,6 +2,7 @@
 # This file replaces the manual library setup in CMakeOlxCommon.cmake when using vcpkg
 
 # Find all required packages from vcpkg
+find_package(Boost REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(sdl2-image CONFIG REQUIRED)
 find_package(CURL REQUIRED)
