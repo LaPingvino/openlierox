@@ -11,8 +11,16 @@ find_package(ZLIB REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 find_package(Vorbis CONFIG REQUIRED)
 
-# Set up include directories
-include_directories(${Boost_INCLUDE_DIRS})
+# Set up include directories for header-only libraries
+# Boost provides header files that need to be in the include path
+if(Boost_FOUND)
+    # Get the include directory from the Boost package
+    get_target_property(BOOST_INCLUDE_DIR Boost::headers INTERFACE_INCLUDE_DIRECTORIES)
+    if(BOOST_INCLUDE_DIR)
+        include_directories(${BOOST_INCLUDE_DIR})
+        message(STATUS "Boost include directory: ${BOOST_INCLUDE_DIR}")
+    endif()
+endif()
 
 # Find optional packages
 if(NOT WIN32)
