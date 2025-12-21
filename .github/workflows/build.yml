@@ -11,38 +11,20 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
-  build:
+  build-linux:
+    name: Build Linux
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: linux-x64
-            target: x86_64-linux-gnu
-            vcpkg_triplet: x64-linux-zig
+            arch: x64
             cmake_flags: -DX11=ON -DHASBFD=ON
           - name: linux-arm64
-            target: aarch64-linux-gnu
-            vcpkg_triplet: arm64-linux-zig
+            arch: arm64
             cmake_flags: -DX11=ON -DHASBFD=OFF
-          - name: macos-x64
-            target: x86_64-macos-none
-            vcpkg_triplet: x64-osx-zig
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
-          - name: macos-arm64
-            target: aarch64-macos-none
-            vcpkg_triplet: arm64-osx-zig
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
-          - name: windows-x64
-            target: x86_64-windows-gnu
-            vcpkg_triplet: x64-windows-zig
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
-            exe_suffix: .exe
-          - name: windows-arm64
-            target: aarch64-windows-gnu
-            vcpkg_triplet: arm64-windows-zig
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
-            exe_suffix: .exe
+            # Note: ARM64 will use Zig cross-compilation from x64 dependencies
 
     steps:
       - uses: actions/checkout@v4
@@ -68,20 +50,32 @@ jobs:
 
       - name: Install vcpkg dependencies
         run: |
+          # Install x64 dependencies - will be used directly for x64, cross-linked for ARM64
           $VCPKG_ROOT/vcpkg install \
-            --triplet=${{ matrix.vcpkg_triplet }} \
-            --overlay-triplets=${{ github.workspace }}/triplets \
+            --triplet=x64-linux \
             --x-install-root=${{ github.workspace }}/vcpkg_installed
-        env:
-          ZIG_TARGET: ${{ matrix.target }}
 
-      - name: Configure CMake with vcpkg and Zig
+      - name: Create Zig cross-compilation wrapper (ARM64 only)
+        if: matrix.arch == 'arm64'
         run: |
-          cmake -B build-${{ matrix.name }} \
+          mkdir -p ${{ github.workspace }}/zig-bin
+          cat > ${{ github.workspace }}/zig-bin/zig-cc << 'EOF'
+          #!/bin/bash
+          exec zig cc -target aarch64-linux-gnu "$@"
+          EOF
+          cat > ${{ github.workspace }}/zig-bin/zig-cxx << 'EOF'
+          #!/bin/bash
+          exec zig c++ -target aarch64-linux-gnu "$@"
+          EOF
+          chmod +x ${{ github.workspace }}/zig-bin/zig-cc
+          chmod +x ${{ github.workspace }}/zig-bin/zig-cxx
+
+      - name: Configure CMake (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          cmake -B build \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
-            -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
-            -DVCPKG_INSTALLED_DIR=${{ github.workspace }}/vcpkg_installed \
-            -DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}/triplets \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
             -DCMAKE_BUILD_TYPE=Release \
             -DUSE_VCPKG=ON \
             -DHAWKNL_BUILTIN=Yes \
@@ -89,18 +83,31 @@ jobs:
             -DLIBLUA_BUILTIN=Yes \
             -DDEBUG=OFF \
             ${{ matrix.cmake_flags }}
-        env:
-          ZIG_TARGET: ${{ matrix.target }}
+
+      - name: Configure CMake (ARM64 with Zig)
+        if: matrix.arch == 'arm64'
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DCMAKE_C_COMPILER=${{ github.workspace }}/zig-bin/zig-cc \
+            -DCMAKE_CXX_COMPILER=${{ github.workspace }}/zig-bin/zig-cxx \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUSE_VCPKG=ON \
+            -DHAWKNL_BUILTIN=Yes \
+            -DLIBZIP_BUILTIN=Yes \
+            -DLIBLUA_BUILTIN=Yes \
+            -DDEBUG=OFF \
+            ${{ matrix.cmake_flags }}
 
       - name: Build
-        run: cmake --build build-${{ matrix.name }} -j$(nproc)
+        run: cmake --build build -j$(nproc)
 
       - name: List build output
-        run: |
-          ls -lah build-${{ matrix.name }}/bin/
+        run: ls -lah build/bin/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: openlierox-${{ matrix.name }}
-          path: build-${{ matrix.name }}/bin/openlierox${{ matrix.exe_suffix || '' }}
+          path: build/bin/openlierox
