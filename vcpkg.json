@@ -5,8 +5,7 @@
   "dependencies": [
     {
       "name": "sdl2",
-      "default-features": false,
-      "features": ["x11"]
+      "default-features": false
     },
     {
       "name": "sdl2-image",
