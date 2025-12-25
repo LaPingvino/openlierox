@@ -269,7 +269,8 @@ IF(WIN32)
 				${OLXROOTDIR}/libs/boost_process)
 ELSE(WIN32)
 	ADD_DEFINITIONS(-Wall)
-	ADD_DEFINITIONS("-std=c++0x")
+	# Use CMAKE_CXX_FLAGS for C++-specific flags to avoid applying them to Objective-C files
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 	EXEC_PROGRAM(sh ARGS ${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh OUTPUT_VARIABLE OLXVER)
 	string(REGEX REPLACE "[\r\n]" " " OLXVER "${OLXVER}")

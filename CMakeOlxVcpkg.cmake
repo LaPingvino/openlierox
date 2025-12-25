@@ -14,14 +14,38 @@ find_package(Vorbis CONFIG REQUIRED)
 # Set up include directories for header-only libraries
 # Boost provides header files that need to be in the include path
 if(Boost_FOUND)
-    # Simple approach: directly add vcpkg's include directory
-    # VCPKG_INSTALLED_DIR is set by the vcpkg toolchain
+    # Try multiple approaches to find vcpkg include directory
+    set(BOOST_INCLUDE_ADDED FALSE)
+
+    # Approach 1: Use VCPKG_INSTALLED_DIR if set
     if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
         include_directories("${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
         message(STATUS "Boost include directory: ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
-    elseif(DEFINED _VCPKG_INSTALLED_DIR AND DEFINED _VCPKG_TARGET_TRIPLET)
+        set(BOOST_INCLUDE_ADDED TRUE)
+    endif()
+
+    # Approach 2: Use _VCPKG_INSTALLED_DIR if set
+    if(NOT BOOST_INCLUDE_ADDED AND DEFINED _VCPKG_INSTALLED_DIR AND DEFINED _VCPKG_TARGET_TRIPLET)
         include_directories("${_VCPKG_INSTALLED_DIR}/${_VCPKG_TARGET_TRIPLET}/include")
         message(STATUS "Boost include directory: ${_VCPKG_INSTALLED_DIR}/${_VCPKG_TARGET_TRIPLET}/include")
+        set(BOOST_INCLUDE_ADDED TRUE)
+    endif()
+
+    # Approach 3: Look relative to CMAKE_BINARY_DIR (where build/ is)
+    if(NOT BOOST_INCLUDE_ADDED)
+        set(VCPKG_BUILD_INCLUDE "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/include")
+        if(EXISTS "${VCPKG_BUILD_INCLUDE}/boost")
+            include_directories("${VCPKG_BUILD_INCLUDE}")
+            message(STATUS "Boost include directory: ${VCPKG_BUILD_INCLUDE}")
+            set(BOOST_INCLUDE_ADDED TRUE)
+        endif()
+    endif()
+
+    # Approach 4: Try Boost_INCLUDE_DIRS variable (set by FindBoost)
+    if(NOT BOOST_INCLUDE_ADDED AND DEFINED Boost_INCLUDE_DIRS)
+        include_directories(${Boost_INCLUDE_DIRS})
+        message(STATUS "Boost include directory: ${Boost_INCLUDE_DIRS}")
+        set(BOOST_INCLUDE_ADDED TRUE)
     endif()
 
     # Also add Boost::headers to libraries for proper dependency tracking
