@@ -30,7 +30,7 @@ jobs:
             vcpkg_triplet: x64-linux
             zig_target: aarch64-linux-gnu
             use_zig: true
-            cmake_flags: -DX11=ON -DHASBFD=OFF
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
 
           # macOS builds - use vcpkg osx triplet
           - name: macos-x64

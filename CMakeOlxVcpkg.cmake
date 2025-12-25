@@ -63,7 +63,7 @@ if(NOT DEDICATED_ONLY)
     list(APPEND VCPKG_LIBS OpenAL::OpenAL)
 
     if(FREEALUT_FOUND)
-        list(APPEND VCPKG_LIBS FREEALUT::FREEALUT)
+        list(APPEND VCPKG_LIBS FreeALUT::alut)
     endif()
 
     list(APPEND VCPKG_LIBS

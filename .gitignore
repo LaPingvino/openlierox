@@ -56,3 +56,11 @@ distrib
 
 # Zig elements
 .zig-cache
+
+# vcpkg build artifacts
+vcpkg_installed/
+
+# PKGBUILD artifacts
+/openlierox/
+/pkg/
+/src/openlierox/
