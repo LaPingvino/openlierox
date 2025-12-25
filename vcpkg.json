@@ -30,7 +30,23 @@
     },
     "libvorbis",
     "libogg",
-    "boost"
+    "boost-algorithm",
+    "boost-array",
+    "boost-assign",
+    "boost-bind",
+    "boost-crc",
+    "boost-cstdint",
+    "boost-filesystem",
+    "boost-function",
+    "boost-lambda",
+    "boost-lexical-cast",
+    "boost-pool",
+    "boost-preprocessor",
+    "boost-random",
+    "boost-signals2",
+    "boost-type-traits",
+    "boost-typeof",
+    "boost-utility"
   ],
   "builtin-baseline": "74e6536215718009aae747d86d84b78376bf9e09"
 }
