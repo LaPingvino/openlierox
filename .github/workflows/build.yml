@@ -98,20 +98,8 @@ jobs:
       - name: Install vcpkg dependencies
         shell: bash
         run: |
-          # Install all required packages for OpenLieroX
+          # vcpkg manifest mode - reads dependencies from vcpkg.json
           $VCPKG_ROOT/vcpkg install \
-            boost-headers \
-            boost-filesystem \
-            boost-system \
-            curl \
-            libxml2 \
-            openal-soft \
-            freealut \
-            libvorbis \
-            sdl2 \
-            sdl2-image \
-            libgd \
-            zlib \
             --triplet=${{ matrix.vcpkg_triplet }} \
             --x-install-root=${{ github.workspace }}/vcpkg_installed
 
