@@ -14,10 +14,13 @@ find_package(Vorbis CONFIG REQUIRED)
 # Set up include directories for header-only libraries
 # Boost provides header files that need to be in the include path
 if(Boost_FOUND)
-    # Get the include directory from the Boost package
+    # Directly link against Boost::headers target to get include directories
+    # This is more robust than manually extracting the include path
+    list(APPEND VCPKG_LIBS Boost::headers)
+
+    # Also try to get and display the include directory for debugging
     get_target_property(BOOST_INCLUDE_DIR Boost::headers INTERFACE_INCLUDE_DIRECTORIES)
-    if(BOOST_INCLUDE_DIR)
-        include_directories(${BOOST_INCLUDE_DIR})
+    if(BOOST_INCLUDE_DIR AND NOT BOOST_INCLUDE_DIR MATCHES "NOTFOUND")
         message(STATUS "Boost include directory: ${BOOST_INCLUDE_DIR}")
     endif()
 endif()
