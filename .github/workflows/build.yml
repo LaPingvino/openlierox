@@ -23,7 +23,7 @@ jobs:
             vcpkg_triplet: x64-linux
             zig_target: x86_64-linux-gnu
             use_zig: false
-            cmake_flags: -DX11=ON -DHASBFD=ON
+            cmake_flags: -DX11=ON -DHASBFD=OFF
           - name: linux-arm64
             os: ubuntu-latest
             vcpkg_triplet: x64-linux
@@ -86,7 +86,7 @@ jobs:
             build-essential cmake ninja-build git curl wget ca-certificates \
             autoconf automake autoconf-archive libtool libtool-bin m4 \
             pkg-config gettext autopoint gperf \
-            libltdl-dev libx11-dev libxext-dev
+            libltdl-dev libx11-dev libxext-dev libicu-dev
           echo "autoconf: $(autoconf --version | head -n1 || true)"
           echo "automake: $(automake --version | head -n1 || true)"
           echo "m4: $(m4 --version | head -n1 || true)"
