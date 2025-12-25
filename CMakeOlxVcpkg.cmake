@@ -88,11 +88,14 @@ if(WIN32)
         kernel32
     )
 elseif(APPLE)
+    # Find OpenSSL for crypto library
+    find_package(OpenSSL REQUIRED)
+
     list(APPEND VCPKG_LIBS
         "-framework Cocoa"
         "-framework Carbon"
         "-framework OpenAL"
-        crypto
+        OpenSSL::Crypto
     )
 else() # Linux/Unix
     list(APPEND VCPKG_LIBS pthread)
