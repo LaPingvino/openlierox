@@ -25,11 +25,11 @@ jobs:
             use_zig: false
             cmake_flags: -DX11=ON -DHASBFD=OFF
           - name: linux-arm64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm64
             vcpkg_triplet: arm64-linux
             zig_target: aarch64-linux-gnu
-            use_zig: true
-            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            use_zig: false
+            cmake_flags: -DX11=ON -DHASBFD=OFF
 
           - name: macos-x64
             os: macos-15-intel # Intel Mac (replaces deprecated macos-13)
