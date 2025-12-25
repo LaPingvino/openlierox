@@ -14,21 +14,14 @@ find_package(Vorbis CONFIG REQUIRED)
 # Set up include directories for header-only libraries
 # Boost provides header files that need to be in the include path
 if(Boost_FOUND)
-    # Extract include directory from Boost::headers target
-    get_target_property(BOOST_INCLUDE_DIRS Boost::headers INTERFACE_INCLUDE_DIRECTORIES)
-
-    # Handle generator expressions and add to include path
-    if(BOOST_INCLUDE_DIRS)
-        # Filter out any generator expressions (they start with $<)
-        string(REGEX REPLACE "\\$<[^>]+>" "" BOOST_INCLUDE_DIRS_FILTERED "${BOOST_INCLUDE_DIRS}")
-        if(BOOST_INCLUDE_DIRS_FILTERED)
-            include_directories(${BOOST_INCLUDE_DIRS_FILTERED})
-            message(STATUS "Boost include directory: ${BOOST_INCLUDE_DIRS_FILTERED}")
-        else()
-            # Fallback: try to use the raw value
-            include_directories(${BOOST_INCLUDE_DIRS})
-            message(STATUS "Boost include directory: ${BOOST_INCLUDE_DIRS}")
-        endif()
+    # Simple approach: directly add vcpkg's include directory
+    # VCPKG_INSTALLED_DIR is set by the vcpkg toolchain
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        include_directories("${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
+        message(STATUS "Boost include directory: ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
+    elseif(DEFINED _VCPKG_INSTALLED_DIR AND DEFINED _VCPKG_TARGET_TRIPLET)
+        include_directories("${_VCPKG_INSTALLED_DIR}/${_VCPKG_TARGET_TRIPLET}/include")
+        message(STATUS "Boost include directory: ${_VCPKG_INSTALLED_DIR}/${_VCPKG_TARGET_TRIPLET}/include")
     endif()
 
     # Also add Boost::headers to libraries for proper dependency tracking
