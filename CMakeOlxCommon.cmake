@@ -128,6 +128,12 @@ ENDIF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
 
 file(GLOB_RECURSE ALL_SRCS ${OLXROOTDIR}/src/*.c*)
 
+# Exclude x86 SIMD files on non-x86 architectures (e.g., ARM Mac)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64|ARM64")
+	list(FILTER ALL_SRCS EXCLUDE REGEX ".*_simd\\.cpp$")
+	message(STATUS "Excluding x86 SIMD files for ARM architecture")
+endif()
+
 IF(APPLE)
 	file(GLOB_RECURSE MAC_SRCS ${OLXROOTDIR}/src/*.m*)
 	SET(ALL_SRCS ${MAC_SRCS} ${ALL_SRCS})

@@ -4,10 +4,14 @@
 #include <list>
 #ifdef __APPLE__
 #include <OpenAL/al.h>
+#include <OpenAL/alc.h>
 #else
 #include <AL/al.h>
+#include <AL/alc.h>
 #endif
+#ifdef HAVE_ALUT
 #include <AL/alut.h>
+#endif
 #include <boost/utility.hpp>
 
 #include "Debug.h"
@@ -32,12 +36,28 @@ namespace
 
 bool SfxDriverOpenAL::init()
 {
+#ifdef HAVE_ALUT
 	ALboolean init=alutInit(NULL,NULL);
 	if (init==AL_FALSE) 
 	{
 	   errors << "SfxDriverOpenAL: ALUT error: " << alutGetErrorString (alutGetError ()) << endl;
 	   return false;
 	}
+#else
+	// Initialize OpenAL without ALUT
+	ALCdevice* device = alcOpenDevice(NULL);
+	if (!device) {
+		errors << "SfxDriverOpenAL: Failed to open OpenAL device" << endl;
+		return false;
+	}
+	ALCcontext* context = alcCreateContext(device, NULL);
+	if (!context) {
+		errors << "SfxDriverOpenAL: Failed to create OpenAL context" << endl;
+		alcCloseDevice(device);
+		return false;
+	}
+	alcMakeContextCurrent(context);
+#endif
 	volumeChange();
 	// orientation doesn't change during the game
 	ALfloat listenerOri[]={0.0,0.0,-1.0, 0.0,1.0,0.0};
@@ -49,7 +69,15 @@ bool SfxDriverOpenAL::init()
 
 void SfxDriverOpenAL::shutDown()
 {
+#ifdef HAVE_ALUT
 	alutExit();
+#else
+	ALCcontext* context = alcGetCurrentContext();
+	ALCdevice* device = alcGetContextsDevice(context);
+	alcMakeContextCurrent(NULL);
+	if (context) alcDestroyContext(context);
+	if (device) alcCloseDevice(device);
+#endif
 }
 
 void SfxDriverOpenAL::think()

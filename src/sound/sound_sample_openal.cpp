@@ -17,7 +17,9 @@
 #else
 #include <AL/al.h>
 #endif
+#ifdef HAVE_ALUT
 #include <AL/alut.h>
+#endif
 #include <stdio.h>
 #include <vector>
 #include <string>
@@ -177,12 +179,19 @@ SoundSampleOpenAL::SoundSampleOpenAL(std::string const& filename)
 	}
 	else
 	{
+#ifdef HAVE_ALUT
 		bufferID=alutCreateBufferFromFile (Utf8ToSystemNative(GetFullFileName(filename)).c_str());
 		if (bufferID==AL_NONE)
 		{
 			notes << "SoundSampleOpenAL: cannot load " << filename << ": " << alutGetErrorString(alutGetError()) << endl;
 			return;
 		}
+#else
+		// Without ALUT, fall back to manual loading
+		bufferID=LoadSoundFromFile( filename.c_str());
+		if (bufferID==0)
+			return;
+#endif
 	}
 	
 	buffer = new OpenALBuffer(bufferID, filename);

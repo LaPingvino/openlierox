@@ -56,6 +56,7 @@ if(NOT DEDICATED_ONLY)
 
     if(FREEALUT_FOUND)
         list(APPEND VCPKG_LIBS FreeALUT::alut)
+        add_definitions(-DHAVE_ALUT)
     endif()
 
     list(APPEND VCPKG_LIBS
