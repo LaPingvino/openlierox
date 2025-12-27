@@ -7,6 +7,11 @@
  *
  */
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#include <process.h>
+#endif
+#include <SDL.h>
 #include <SDL_thread.h>
 #include "ThreadPool.h"
 #include "Debug.h"

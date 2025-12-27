@@ -452,7 +452,7 @@ enum  {
 };
 
 // TODO: remove this here!
-extern CButton cNetButtons[5];
+extern CButton cNetButtons[6];
 
 ///////////////////
 // Show a server's details

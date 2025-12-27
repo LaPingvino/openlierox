@@ -85,10 +85,30 @@
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
 #else
-#include <ansidecl.h>
+// Use feature test to include ansidecl.h and libiberty.h only when available
+#if defined(__has_include)
+#  if __has_include(<ansidecl.h>)
+#    include <ansidecl.h>
+#  else
+#    ifndef ATTRIBUTE_UNUSED
+#      define ATTRIBUTE_UNUSED
+#    endif
+#  endif
+#else
+#  include <ansidecl.h>
+#endif
+
 #include <bfd.h>
 #define HAVE_DECL_BASENAME 1
-#include <libiberty.h>
+
+#if defined(__has_include)
+#  if __has_include(<libiberty.h>)
+#    include <libiberty.h>
+#  endif
+#else
+#  include <libiberty.h>
+#endif
+
 #include <dlfcn.h>
 #include <link.h>
 #endif
@@ -103,7 +123,7 @@ bfd_boolean (*dbfd_check_format)(bfd *abfd, bfd_format format);
 bfd_boolean (*dbfd_check_format_matches)(bfd *abfd, bfd_format format, char ***matching);
 bfd_boolean (*dbfd_close)(bfd *abfd);
 bfd_boolean (*dbfd_map_over_sections)(bfd *abfd, void (*func)(bfd *abfd, asection *sect, void *obj),
-		void *obj);
+			void *obj);
 #define bfd_init dbfd_init
 
 static void load_funcs(void)
@@ -121,7 +141,7 @@ static void load_funcs(void)
 #endif
 
 
-static asymbol **syms;		/* Symbol table.  */
+static asymbol **syms; 	/* Symbol table.  */
 
 
 static Result slurp_symtab(bfd * abfd);
@@ -138,7 +158,7 @@ static Result slurp_symtab(bfd * abfd)
 	long symcount = bfd_read_minisymbols(abfd, false, (void**) &syms, &size);
 	if (symcount == 0)
 		symcount = bfd_read_minisymbols(abfd, true /* dynamic */ ,
-						(void**) &syms, &size);
+					(void**) &syms, &size);
 
 	if (symcount < 0)
 		return "error getting minisymbols";
@@ -199,7 +219,7 @@ static void find_address_in_section(bfd *abfd, asection *section, void *data __a
 
 	sectionFound = true;
 	found = bfd_find_nearest_line(abfd, section, syms, pc - vma,
-				      &filename, &functionname, &line);
+					  &filename, &functionname, &line);
 }
 
 
@@ -209,7 +229,7 @@ static Result translate_addresses_buf(bfd * abfd, bfd_vma addr, const std::strin
 	pc = addr;
 	sectionFound = false;
 	found = false;
-	bfd_map_over_sections(abfd, find_address_in_section, (PTR) NULL);
+	bfd_map_over_sections(abfd, find_address_in_section, (void*) NULL);
 
 	if (!found) {
 		if(sectionFound) return "function not found";

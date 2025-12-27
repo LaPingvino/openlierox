@@ -46,7 +46,7 @@ union mmx_reg
 #define mmx_fetch(mem,hint) \
 	__asm__ __volatile__ ("prefetch" #hint " %0" \
 	: /* nothing */ \
-	: "X" (mem))
+	: "m" (mem))
 
 #define movd_mr(A, B) mmx_mr(movd, A, B)
 #define movd_rm(A, B) mmx_rm(movd, A, B)

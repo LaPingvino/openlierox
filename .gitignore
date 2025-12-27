@@ -2,6 +2,7 @@ build/msvc*/obj
 build/msvc*/Debug
 build/msvc*/Release
 build/Xcode/build
+build/.cmake
 *.ncb
 *.suo
 *.vcproj.*.user
@@ -53,3 +54,14 @@ PrecompiledHeader.*
 *openlierox_pch_dephelp.*
 
 distrib
+
+# Zig elements
+.zig-cache
+
+# vcpkg build artifacts
+vcpkg_installed/
+
+# PKGBUILD artifacts
+/openlierox/
+/pkg/
+/src/openlierox/

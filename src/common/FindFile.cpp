@@ -1038,6 +1038,48 @@ std::string JoinPaths(const std::string& path1, const std::string& path2)
 
 // These are taken from SDL_rwops.c
 #ifdef WIN32
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+static Sint64 stdio_seek(SDL_RWops *context, Sint64 offset, int whence)
+{
+	if ( fseek(context->hidden.stdio.fp, (long)offset, whence) == 0 ) {
+		return(ftell(context->hidden.stdio.fp));
+	} else {
+		SDL_Error(SDL_EFSEEK);
+		return(-1);
+	}
+}
+static size_t stdio_read(SDL_RWops *context, void *ptr, size_t size, size_t maxnum)
+{
+	size_t nread;
+
+	nread = fread(ptr, size, maxnum, context->hidden.stdio.fp);
+	if ( nread == 0 && ferror(context->hidden.stdio.fp) ) {
+		SDL_Error(SDL_EFREAD);
+	}
+	return nread;
+}
+static size_t stdio_write(SDL_RWops *context, const void *ptr, size_t size, size_t num)
+{
+	size_t nwrote;
+
+	nwrote = fwrite(ptr, size, num, context->hidden.stdio.fp);
+	if ( nwrote == 0 && ferror(context->hidden.stdio.fp) ) {
+		SDL_Error(SDL_EFWRITE);
+	}
+	return nwrote;
+}
+static int stdio_close(SDL_RWops *context)
+{
+	if ( context ) {
+		if ( context->hidden.stdio.autoclose ) {
+			/* WARNING:  Check the return value here! */
+			fclose(context->hidden.stdio.fp);
+		}
+		SDL_FreeRW(context);
+	}
+	return(0);
+}
+#else
 static int stdio_seek(SDL_RWops *context, int offset, int whence)
 {
 	if ( fseek(context->hidden.stdio.fp, offset, whence) == 0 ) {
@@ -1079,6 +1121,7 @@ static int stdio_close(SDL_RWops *context)
 	return(0);
 }
 #endif
+#endif
 
 ////////////////
 // Creates SDL_RWops from a file pointer
@@ -1092,12 +1135,12 @@ SDL_RWops *RWopsFromFP(FILE *fp, bool autoclose)  {
 		rwops->write = stdio_write;
 		rwops->close = stdio_close;
 		rwops->hidden.stdio.fp = fp;
-		rwops->hidden.stdio.autoclose = (int)autoclose;
+		rwops->hidden.stdio.autoclose = autoclose ? SDL_TRUE : SDL_FALSE;
 	}
 	return(rwops);
 
 #else
-	return SDL_RWFromFP(fp, (SDL_bool)autoclose);
+	return SDL_RWFromFP(fp, autoclose ? SDL_TRUE : SDL_FALSE);
 #endif
 }
 

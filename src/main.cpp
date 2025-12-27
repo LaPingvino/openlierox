@@ -184,7 +184,10 @@ static void DoSystemChecks() {
 	static_assert(sizeof(int) == 4, "sizeof_int__equals4");
 	static_assert(sizeof(float) == 4, "sizeof_float__equals4");
 	// sometimes the return value of SendMessage is used as a pointer
+	// NOTE: This assertion only holds on 32-bit Windows, not 64-bit
+#if defined(_WIN32) && !defined(_WIN64)
 	static_assert(sizeof(DWORD) == sizeof(void*), "sizeof_dword__equals_p");
+#endif
 }
 
 

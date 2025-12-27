@@ -1,24 +1,17 @@
 # CMake common file for OpenLieroX
 # sets up the source lists and vars
 
-cmake_minimum_required(VERSION 2.4)
-IF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
-	if(COMMAND CMAKE_POLICY)
-		cmake_policy(VERSION 2.4)
-		cmake_policy(SET CMP0005 OLD)
-		cmake_policy(SET CMP0003 OLD)
-		# Policy CMP0011 was introduced in 2.6.3.
-		# We cannot do if(POLCY CMP0011) as a check because 2.4 would fail then.
-		if(${CMAKE_MAJOR_VERSION} GREATER 2 OR ${CMAKE_MINOR_VERSION} GREATER 6 OR ${CMAKE_PATCH_VERSION} GREATER 2)
-			# We explicitly want to export variables here.
-			cmake_policy(SET CMP0011 OLD)
-		endif(${CMAKE_MAJOR_VERSION} GREATER 2 OR ${CMAKE_MINOR_VERSION} GREATER 6 OR ${CMAKE_PATCH_VERSION} GREATER 2)
-	endif(COMMAND CMAKE_POLICY)
-	include(${OLXROOTDIR}/PCHSupport_26.cmake)
-ENDIF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
+cmake_minimum_required(VERSION 3.10)
+if(COMMAND CMAKE_POLICY)
+    cmake_policy(SET CMP0005 NEW)
+    cmake_policy(SET CMP0003 NEW)
+    cmake_policy(SET CMP0011 NEW)
+endif(COMMAND CMAKE_POLICY)
+include(${OLXROOTDIR}/PCHSupport_26.cmake)
 
 
 SET(SYSTEM_DATA_DIR "/usr/share/games" CACHE STRING "system data dir")
+OPTION(USE_VCPKG "Use vcpkg for dependency management" Yes)
 OPTION(DEBUG "enable debug build" Yes)
 OPTION(DEDICATED_ONLY "dedicated_only - without gfx and sound" No)
 OPTION(G15 "G15 support" No)
@@ -41,50 +34,50 @@ OPTION(BOOST_LINK_STATIC "Link boost-libs statically" No)
 OPTION(MINGW_CROSS_COMPILE "Cross-compile Windows .EXE using i586-mingw32msvc-cc compiler" No)
 
 IF (DEBUG)
-	SET(CMAKE_BUILD_TYPE Debug)
+    SET(CMAKE_BUILD_TYPE Debug)
 ELSE (DEBUG)
-	SET(CMAKE_BUILD_TYPE Release)
+    SET(CMAKE_BUILD_TYPE Release)
 ENDIF (DEBUG)
 
 IF (DEDICATED_ONLY)
-	SET(X11 No)
-	SET(WITH_G15 No)
+    SET(X11 No)
+    SET(WITH_G15 No)
 ENDIF (DEDICATED_ONLY)
 
 # Platform specific things can be put here
 # Compilers and other specific variables can be found here:
 # http://www.cmake.org/Wiki/CMake_Useful_Variables
 IF(UNIX)
-	IF(APPLE)
-		SET(HAWKNL_BUILTIN ON)
-		SET(LIBZIP_BUILTIN ON)
-		SET(LIBLUA_BUILTIN ON)
-		SET(X11 OFF)
-		#SET(BOOST_LINK_STATIC ON)
-	ENDIF(APPLE)
+    IF(APPLE)
+        SET(HAWKNL_BUILTIN ON)
+        SET(LIBZIP_BUILTIN ON)
+        SET(LIBLUA_BUILTIN ON)
+        SET(X11 OFF)
+        #SET(BOOST_LINK_STATIC ON)
+    ENDIF(APPLE)
 
-	IF (CYGWIN)
-		SET(WITH_G15 OFF) # Linux library as of now
-	ELSE (CYGWIN)
-	ENDIF (CYGWIN)
-	IF(CMAKE_C_COMPILER MATCHES i586-mingw32msvc-cc)
-		SET(MINGW_CROSS_COMPILE ON)
-	ENDIF(CMAKE_C_COMPILER MATCHES i586-mingw32msvc-cc)
-	IF (MINGW_CROSS_COMPILE)
-		SET(G15 OFF)
-		SET(HAWKNL_BUILTIN ON) # We already have prebuilt HawkNL library
-		SET(LIBZIP_BUILTIN ON)
-		SET(LIBLUA_BUILTIN ON)
-		SET(X11 OFF)
-		SET(BOOST_LINK_STATIC ON)
-	ENDIF (MINGW_CROSS_COMPILE)
+    IF (CYGWIN)
+        SET(WITH_G15 OFF) # Linux library as of now
+    ELSE (CYGWIN)
+    ENDIF (CYGWIN)
+    IF(CMAKE_C_COMPILER MATCHES i586-mingw32msvc-cc)
+        SET(MINGW_CROSS_COMPILE ON)
+    ENDIF(CMAKE_C_COMPILER MATCHES i586-mingw32msvc-cc)
+    IF (MINGW_CROSS_COMPILE)
+        SET(G15 OFF)
+        SET(HAWKNL_BUILTIN ON) # We already have prebuilt HawkNL library
+        SET(LIBZIP_BUILTIN ON)
+        SET(LIBLUA_BUILTIN ON)
+        SET(X11 OFF)
+        SET(BOOST_LINK_STATIC ON)
+    ENDIF (MINGW_CROSS_COMPILE)
 ELSE(UNIX)
-	IF(WIN32)
-		SET(G15 OFF)
-		SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
-		SET(X11 OFF)
-	ELSE(WIN32)
-	ENDIF(WIN32)
+    IF(WIN32)
+        SET(G15 OFF)
+        SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+        SET(X11 OFF)
+    ELSE(WIN32)
+    ENDIF(WIN32)
 ENDIF(UNIX)
 
 
@@ -123,330 +116,377 @@ INCLUDE_DIRECTORIES(${OLXROOTDIR}/src)
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/pstreams)
 
 IF(ADVASSERT)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/advanced-assert)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/advanced-assert)
 ENDIF(ADVASSERT)
 
 # TODO: don't hardcode path here
 IF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
-	INCLUDE_DIRECTORIES(/usr/include/libxml2)
-	INCLUDE_DIRECTORIES(/usr/local/include/libxml2)
+    INCLUDE_DIRECTORIES(/usr/include/libxml2)
+    INCLUDE_DIRECTORIES(/usr/local/include/libxml2)
 ENDIF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
 
 
 file(GLOB_RECURSE ALL_SRCS ${OLXROOTDIR}/src/*.c*)
 
+# Exclude x86 SIMD files on non-x86 architectures (e.g., ARM Mac)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64|ARM64")
+    list(FILTER ALL_SRCS EXCLUDE REGEX ".*_simd\\.cpp$")
+    message(STATUS "Excluding x86 SIMD files for ARM architecture")
+endif()
+
 IF(APPLE)
-	file(GLOB_RECURSE MAC_SRCS ${OLXROOTDIR}/src/*.m*)
-	SET(ALL_SRCS ${MAC_SRCS} ${ALL_SRCS})
+    file(GLOB_RECURSE MAC_SRCS ${OLXROOTDIR}/src/*.m*)
+    SET(ALL_SRCS ${MAC_SRCS} ${ALL_SRCS})
+    # Objective-C files should not get C++ flags
+    SET_SOURCE_FILES_PROPERTIES(${MAC_SRCS} PROPERTIES LANGUAGE OBJC)
+    # Enable Objective-C language
+    enable_language(OBJC)
 ENDIF(APPLE)
 
 IF (BREAKPAD)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/breakpad/src)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/breakpad)
-	ADD_DEFINITIONS("'-DBP_LOGGING_INCLUDE=\"breakpad_logging.h\"'")
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/breakpad/src)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/breakpad)
+    ADD_DEFINITIONS("'-DBP_LOGGING_INCLUDE=\"breakpad_logging.h\"'")
 
-	IF(MINGW_CROSS_COMPILE OR WIN32)
+    IF(MINGW_CROSS_COMPILE OR WIN32)
 
-	ELSE(MINGW_CROSS_COMPILE OR WIN32)
-		EXEC_PROGRAM(python ARGS ${CMAKE_CURRENT_SOURCE_DIR}/libs/breakpad_getallsources.py OUTPUT_VARIABLE BREAKPAD_SRCS)
-		SET(ALL_SRCS ${BREAKPAD_SRCS} ${ALL_SRCS})		
-	ENDIF(MINGW_CROSS_COMPILE OR WIN32)
+    ELSE(MINGW_CROSS_COMPILE OR WIN32)
+        EXEC_PROGRAM(python ARGS ${CMAKE_CURRENT_SOURCE_DIR}/libs/breakpad_getallsources.py OUTPUT_VARIABLE BREAKPAD_SRCS)
+        SET(ALL_SRCS ${BREAKPAD_SRCS} ${ALL_SRCS})
+    ENDIF(MINGW_CROSS_COMPILE OR WIN32)
 ELSE (BREAKPAD)
-	ADD_DEFINITIONS(-DNBREAKPAD)
+    ADD_DEFINITIONS(-DNBREAKPAD)
 ENDIF (BREAKPAD)
 
-IF (LINENOISE)
-	ADD_DEFINITIONS(-DHAVE_LINENOISE)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/linenoise)
-	SET(ALL_SRCS ${OLXROOTDIR}/libs/linenoise/linenoise.cpp ${ALL_SRCS})
-ENDIF (LINENOISE)
+IF (LINENOISE AND NOT WIN32)
+    ADD_DEFINITIONS(-DHAVE_LINENOISE)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/linenoise)
+    SET(ALL_SRCS ${OLXROOTDIR}/libs/linenoise/linenoise.cpp ${ALL_SRCS})
+ENDIF (LINENOISE AND NOT WIN32)
 
 IF (DISABLE_JOYSTICK)
-	ADD_DEFINITIONS(-DDISABLE_JOYSTICK)
+    ADD_DEFINITIONS(-DDISABLE_JOYSTICK)
 ENDIF (DISABLE_JOYSTICK)
 
 IF (GCOREDUMPER)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/coredumper/src)
-	ADD_DEFINITIONS(-DGCOREDUMPER)
-	AUX_SOURCE_DIRECTORY(${OLXROOTDIR}/libs/coredumper/src COREDUMPER_SRCS)
-	SET(ALL_SRCS ${ALL_SRCS} ${COREDUMPER_SRCS})
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/coredumper/src)
+    ADD_DEFINITIONS(-DGCOREDUMPER)
+    AUX_SOURCE_DIRECTORY(${OLXROOTDIR}/libs/coredumper/src COREDUMPER_SRCS)
+    SET(ALL_SRCS ${ALL_SRCS} ${COREDUMPER_SRCS})
 ENDIF (GCOREDUMPER)
 
 IF (HAWKNL_BUILTIN)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/crc.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/errorstr.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/nl.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/sock.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/group.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/loopback.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/err.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/thread.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/mutex.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/condition.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/nltime.c)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/crc.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/errorstr.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/nl.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/sock.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/group.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/loopback.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/err.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/thread.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/mutex.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/condition.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/libs/hawknl/src/nltime.c)
 ELSE (HAWKNL_BUILTIN)
-	INCLUDE_DIRECTORIES(/usr/include/hawknl)
+    INCLUDE_DIRECTORIES(/usr/include/hawknl)
 ENDIF (HAWKNL_BUILTIN)
 
 IF (LIBZIP_BUILTIN)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/libzip)
-	AUX_SOURCE_DIRECTORY(${OLXROOTDIR}/libs/libzip LIBZIP_SRCS)
-	SET(ALL_SRCS ${ALL_SRCS} ${LIBZIP_SRCS})
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/libzip)
+    AUX_SOURCE_DIRECTORY(${OLXROOTDIR}/libs/libzip LIBZIP_SRCS)
+    SET(ALL_SRCS ${ALL_SRCS} ${LIBZIP_SRCS})
 ENDIF (LIBZIP_BUILTIN)
 
 IF (LIBLUA_BUILTIN)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/lua)
-	AUX_SOURCE_DIRECTORY(${OLXROOTDIR}/libs/lua LIBLUA_SRCS)
-	SET(ALL_SRCS ${ALL_SRCS} ${LIBLUA_SRCS})
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/lua)
+    AUX_SOURCE_DIRECTORY(${OLXROOTDIR}/libs/lua LIBLUA_SRCS)
+    SET(ALL_SRCS ${ALL_SRCS} ${LIBLUA_SRCS})
 ELSE (LIBLUA_BUILTIN)
-	# TODO: Make this even more dynamic, search for the directory somehow? Like you can search for linking options with pkg-config?
-	#Search for lua5.1 first
-	IF(EXISTS /usr/include/lua5.1)
-		SET(LUA_SEARCHDIR /usr/include/lua5.1)
-	ENDIF(EXISTS /usr/include/lua5.1)
-	
-	#On some systems, e.g. Fedora, it may be lua-5.1
-	IF(NOT LUA_SEARCHDIR)
-		IF(EXISTS /usr/include/lua-5.1)
-			SET(LUA_SEARCHDIR /usr/include/lua-5.1)
-		ENDIF(EXISTS /usr/include/lua-5.1)
-	ENDIF(NOT LUA_SEARCHDIR)
+    # TODO: Make this even more dynamic, search for the directory somehow? Like you can search for linking options with pkg-config?
+    #Search for lua5.1 first
+    IF(EXISTS /usr/include/lua5.1)
+        SET(LUA_SEARCHDIR /usr/include/lua5.1)
+    ENDIF(EXISTS /usr/include/lua5.1)
 
-	#If not found, try "lua", but give a warning
-	IF(NOT LUA_SEARCHDIR)
-		MESSAGE(WARNING "No Lua 5.1 header directory found. Trying default lua but it may not work. You may have to install Lua 5.1 development packages, or use the built-in library")
-		IF(EXISTS /usr/include/lua)
-			SET(LUA_SEARCHDIR /usr/include/lua)
-		ENDIF(EXISTS /usr/include/lua)
-	ENDIF(NOT LUA_SEARCHDIR)
+    #On some systems, e.g. Fedora, it may be lua-5.1
+    IF(NOT LUA_SEARCHDIR)
+        IF(EXISTS /usr/include/lua-5.1)
+            SET(LUA_SEARCHDIR /usr/include/lua-5.1)
+        ENDIF(EXISTS /usr/include/lua-5.1)
+    ENDIF(NOT LUA_SEARCHDIR)
 
-	#Set the header path, or display a warning if it doesn't exist
-	IF(LUA_SEARCHDIR)
-		INCLUDE_DIRECTORIES(${LUA_SEARCHDIR})
-	ELSE(LUA_SEARCHDIR)
-		MESSAGE(WARNING "No Lua header directory found. Make sure that Lua 5.1 development packages are installed, or use the built-in library")
-	ENDIF(LUA_SEARCHDIR)
+    #If not found, try "lua", but give a warning
+    IF(NOT LUA_SEARCHDIR)
+        MESSAGE(WARNING "No Lua 5.1 header directory found. Trying default lua but it may not work. You may have to install Lua 5.1 development packages, or use the built-in library")
+        IF(EXISTS /usr/include/lua)
+            SET(LUA_SEARCHDIR /usr/include/lua)
+        ENDIF(EXISTS /usr/include/lua)
+    ENDIF(NOT LUA_SEARCHDIR)
+
+    #Set the header path, or display a warning if it doesn't exist
+    IF(LUA_SEARCHDIR)
+        INCLUDE_DIRECTORIES(${LUA_SEARCHDIR})
+    ELSE(LUA_SEARCHDIR)
+        MESSAGE(WARNING "No Lua header directory found. Make sure that Lua 5.1 development packages are installed, or use the built-in library")
+    ENDIF(LUA_SEARCHDIR)
 ENDIF (LIBLUA_BUILTIN)
 
 IF (STLPORT)
-	INCLUDE_DIRECTORIES(/usr/include/stlport)
-	ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64) # hm, don't know, at least it works for me (ppc32/amd32)
-# debugging stuff for STLport
-	ADD_DEFINITIONS(-D_STLP_DEBUG=1)
-	ADD_DEFINITIONS(-D_STLP_DEBUG_LEVEL=_STLP_STANDARD_DBG_LEVEL)
-	ADD_DEFINITIONS(-D_STLP_SHRED_BYTE=0xA3)
-	ADD_DEFINITIONS(-D_STLP_DEBUG_UNINITIALIZED=1)
-	ADD_DEFINITIONS(-D_STLP_DEBUG_ALLOC=1)
+    INCLUDE_DIRECTORIES(/usr/include/stlport)
+    ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64) # hm, don't know, at least it works for me (ppc32/amd32)
+    # debugging stuff for STLport
+    ADD_DEFINITIONS(-D_STLP_DEBUG=1)
+    ADD_DEFINITIONS(-D_STLP_DEBUG_LEVEL=_STLP_STANDARD_DBG_LEVEL)
+    ADD_DEFINITIONS(-D_STLP_SHRED_BYTE=0xA3)
+    ADD_DEFINITIONS(-D_STLP_DEBUG_UNINITIALIZED=1)
+    ADD_DEFINITIONS(-D_STLP_DEBUG_ALLOC=1)
 ENDIF (STLPORT)
 
 
 IF(DEBUG)
-	ADD_DEFINITIONS(-DDEBUG=1)
+    ADD_DEFINITIONS(-DDEBUG=1)
 ENDIF(DEBUG)
 
 IF(MEMSTATS)
-	ADD_DEFINITIONS(-include ${OLXROOTDIR}/optional-includes/memdebug/memstats.h)
+    ADD_DEFINITIONS(-include ${OLXROOTDIR}/optional-includes/memdebug/memstats.h)
 ENDIF(MEMSTATS)
 
 
 # Generic defines
 IF(WIN32)
-	ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
-	SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
-	IF(DEBUG)
-		ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
-	ELSE(DEBUG)
-		ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
-	ENDIF(DEBUG)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include
-				${OLXROOTDIR}/libs/hawknl/src
-				${OLXROOTDIR}/libs/libzip
-				${OLXROOTDIR}/libs/boost_process)
+    ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
+
+    # Remove /RTC1 from debug flags to avoid conflict with optimization flags
+    if(MSVC)
+        string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        string(REPLACE "/RTC1" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+    endif()
+
+    SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
+    IF(DEBUG)
+        ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
+    ELSE(DEBUG)
+        ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
+    ENDIF(DEBUG)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include
+    ${OLXROOTDIR}/libs/hawknl/src
+    ${OLXROOTDIR}/libs/libzip
+    ${OLXROOTDIR}/libs/boost_process)
 ELSE(WIN32)
-	ADD_DEFINITIONS(-Wall)
-	ADD_DEFINITIONS("-std=c++0x")
+    ADD_DEFINITIONS(-Wall)
+    # Use CMAKE_CXX_FLAGS for C++-specific flags to avoid applying them to Objective-C files
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
-	EXEC_PROGRAM(sh ARGS ${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh OUTPUT_VARIABLE OLXVER)
-	string(REGEX REPLACE "[\r\n]" " " OLXVER "${OLXVER}")
-	MESSAGE( "OLX_VERSION = ${OLXVER}" )
+    EXEC_PROGRAM(sh ARGS ${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh OUTPUT_VARIABLE OLXVER)
+    string(REGEX REPLACE "[\r\n]" " " OLXVER "${OLXVER}")
+    MESSAGE( "OLX_VERSION = ${OLXVER}" )
 
-	IF(MINGW_CROSS_COMPILE)
-		ADD_DEFINITIONS(-DHAVE_BOOST -DZLIB_WIN32_NODLL -DLIBXML_STATIC -DNONDLL -DCURL_STATICLIB -D_XBOX # _XBOX to link OpenAL statically
-							-D_WIN32_WINNT=0x0500 -D_WIN32_WINDOWS=0x0500 -DWINVER=0x0500)
-		INCLUDE_DIRECTORIES(
-					${OLXROOTDIR}/build/mingw/include
-					${OLXROOTDIR}/libs/hawknl/include
-					${OLXROOTDIR}/libs/hawknl/src
-					${OLXROOTDIR}/libs/libzip
-					${OLXROOTDIR}/libs/lua
-					${OLXROOTDIR}/libs/boost_process)
-		# as long as we dont have breakpad, this doesnt make sense
-		ADD_DEFINITIONS(-gdwarf-2 -g1) # By default GDB uses STABS and produces 300Mb exe - DWARF will produce 40Mb and no line numbers, -g2 will give 170Mb
-	ELSE(MINGW_CROSS_COMPILE)
-		ADD_DEFINITIONS("-pthread")
-	ENDIF(MINGW_CROSS_COMPILE)
+    IF(MINGW_CROSS_COMPILE)
+        ADD_DEFINITIONS(-DHAVE_BOOST -DZLIB_WIN32_NODLL -DLIBXML_STATIC -DNONDLL -DCURL_STATICLIB -D_XBOX # _XBOX to link OpenAL statically
+       -D_WIN32_WINNT=0x0500 -D_WIN32_WINDOWS=0x0500 -DWINVER=0x0500)
+        INCLUDE_DIRECTORIES(
+     ${OLXROOTDIR}/build/mingw/include
+     ${OLXROOTDIR}/libs/hawknl/include
+     ${OLXROOTDIR}/libs/hawknl/src
+     ${OLXROOTDIR}/libs/libzip
+     ${OLXROOTDIR}/libs/lua
+     ${OLXROOTDIR}/libs/boost_process)
+        # as long as we dont have breakpad, this doesnt make sense
+        ADD_DEFINITIONS(-gdwarf-2 -g1) # By default GDB uses STABS and produces 300Mb exe - DWARF will produce 40Mb and no line numbers, -g2 will give 170Mb
+    ELSE(MINGW_CROSS_COMPILE)
+        ADD_DEFINITIONS("-pthread")
+    ENDIF(MINGW_CROSS_COMPILE)
 
-	SET(OPTIMIZE_COMPILER_FLAG -O3)
+    SET(OPTIMIZE_COMPILER_FLAG -O3)
 ENDIF(WIN32)
 
 IF(OPTIM_PROJECTILES)
-	#Always optimize these files - they make debug build unusable otherwise
-	SET_SOURCE_FILES_PROPERTIES(	${OLXROOTDIR}/src/common/PhysicsLX56_Projectiles.cpp
-						PROPERTIES COMPILE_FLAGS ${OPTIMIZE_COMPILER_FLAG})
+    #Always optimize these files - they make debug build unusable otherwise
+    SET_SOURCE_FILES_PROPERTIES(	${OLXROOTDIR}/src/common/PhysicsLX56_Projectiles.cpp
+      PROPERTIES COMPILE_FLAGS ${OPTIMIZE_COMPILER_FLAG})
 ENDIF(OPTIM_PROJECTILES)
 
 # SDL libs
 IF(WIN32)
 ELSEIF(APPLE)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/Xcode/include)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/Xcode/freealut/include)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/SDL.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/SDL_image.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/SDL_mixer.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/UnixImageIO.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/GD.framework/Headers)
+    # Use Homebrew SDL2 (when available on macOS)
+    EXEC_PROGRAM(brew ARGS --prefix sdl2 OUTPUT_VARIABLE SDL2_PREFIX)
+    string(REGEX REPLACE "[\r\n]" "" SDL2_PREFIX "${SDL2_PREFIX}")
+    IF(SDL2_PREFIX)
+        INCLUDE_DIRECTORIES(${SDL2_PREFIX}/include)
+        INCLUDE_DIRECTORIES(${SDL2_PREFIX}/include/SDL2)
+    ENDIF()
+
+    EXEC_PROGRAM(brew ARGS --prefix sdl2_image OUTPUT_VARIABLE SDL2_IMAGE_PREFIX)
+    string(REGEX REPLACE "[\r\n]" "" SDL2_IMAGE_PREFIX "${SDL2_IMAGE_PREFIX}")
+    IF(SDL2_IMAGE_PREFIX)
+        INCLUDE_DIRECTORIES(${SDL2_IMAGE_PREFIX}/include)
+        INCLUDE_DIRECTORIES(${SDL2_IMAGE_PREFIX}/include/SDL2)
+    ENDIF()
+
+    EXEC_PROGRAM(brew ARGS --prefix sdl2_mixer OUTPUT_VARIABLE SDL2_MIXER_PREFIX)
+    string(REGEX REPLACE "[\r\n]" "" SDL2_MIXER_PREFIX "${SDL2_MIXER_PREFIX}")
+    IF(SDL2_MIXER_PREFIX)
+        INCLUDE_DIRECTORIES(${SDL2_MIXER_PREFIX}/include)
+        INCLUDE_DIRECTORIES(${SDL2_MIXER_PREFIX}/include/SDL2)
+    ENDIF()
+
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/Xcode/include)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/Xcode/freealut/include)
 ELSEIF(MINGW_CROSS_COMPILE)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/mingw/include/SDL)
+    INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/mingw/include/SDL)
 ELSE()
-	EXEC_PROGRAM(sdl2-config ARGS --cflags OUTPUT_VARIABLE SDLCFLAGS)
-	string(REGEX REPLACE "[\r\n]" " " SDLCFLAGS "${SDLCFLAGS}")
-	ADD_DEFINITIONS(${SDLCFLAGS})
+    IF(NOT USE_VCPKG)
+        EXEC_PROGRAM(sdl2-config ARGS --cflags OUTPUT_VARIABLE SDLCFLAGS)
+        string(REGEX REPLACE "[\r\n]" " " SDLCFLAGS "${SDLCFLAGS}")
+        ADD_DEFINITIONS(${SDLCFLAGS})
+    ENDIF(NOT USE_VCPKG)
 endif(WIN32)
 
 
 IF(X11)
-	ADD_DEFINITIONS("-DX11")
+    ADD_DEFINITIONS("-DX11")
 ENDIF(X11)
 IF(DEDICATED_ONLY)
-	ADD_DEFINITIONS("-DDEDICATED_ONLY")
+    ADD_DEFINITIONS("-DDEDICATED_ONLY")
 ENDIF(DEDICATED_ONLY)
 
 
 IF(G15)
-	ADD_DEFINITIONS("-DWITH_G15")
+    ADD_DEFINITIONS("-DWITH_G15")
 ENDIF(G15)
 
 IF(HASBFD)
-	ADD_DEFINITIONS("-DHASBFD")
-	SET(LIBS ${LIBS} dl bfd opcodes iberty)
-	INCLUDE_DIRECTORIES(/usr/include/libiberty)
+    ADD_DEFINITIONS("-DHASBFD")
+    SET(LIBS ${LIBS} dl bfd opcodes iberty)
+    INCLUDE_DIRECTORIES(/usr/include/libiberty)
 ENDIF(HASBFD)
 
 
 IF(BOOST_LINK_STATIC)
-	# seems this is the way for Debian:
-	SET(LIBS ${LIBS} boost_signals.a)
-	IF(MINGW_CROSS_COMPILE)
-		SET(LIBS ${LIBS} boost_system.a)
-	ENDIF(MINGW_CROSS_COMPILE)
-	# and this on newer CMake (>=2.6?)
-	SET(LIBS ${LIBS} /usr/lib/x86_64-linux-gnu/libboost_signals.a /usr/lib/x86_64-linux-gnu/libboost_system.a)
+    # Boost.Signals2 is header-only, no need for boost_signals library
+    IF(MINGW_CROSS_COMPILE)
+        SET(LIBS ${LIBS} boost_system.a)
+    ENDIF(MINGW_CROSS_COMPILE)
 ELSE(BOOST_LINK_STATIC)
-	FIND_PACKAGE(Boost COMPONENTS system REQUIRED)
-	SET(LIBS ${LIBS} ${Boost_LIBRARIES})
+    # Boost.Signals2 is header-only, we only need headers
+    # When using Zig cross-compilation, manually add Boost include path
+    # since FIND_PACKAGE won't work without system libraries
+    FIND_PACKAGE(Boost REQUIRED)
+    IF(Boost_INCLUDE_DIRS)
+        INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+    ENDIF(Boost_INCLUDE_DIRS)
 ENDIF(BOOST_LINK_STATIC)
 
 IF(APPLE)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutBufferData.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutCodec.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutError.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutInit.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutInputStream.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutLoader.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutOutputStream.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutUtil.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutVersion.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutWaveform.c)
-	ADD_DEFINITIONS("-F ${OLXROOTDIR}/build/Xcode")
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutBufferData.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutCodec.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutError.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutInit.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutInputStream.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutLoader.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutOutputStream.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutUtil.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutVersion.c)
+    SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutWaveform.c)
+    ADD_DEFINITIONS("-F ${OLXROOTDIR}/build/Xcode")
 ELSE(APPLE)
-	SET(LIBS ${LIBS} alut openal vorbisfile)
+    SET(LIBS ${LIBS} alut openal vorbisfile)
 ENDIF(APPLE)
 
 SET(LIBS ${LIBS} curl)
 
 if(APPLE)
-	FIND_PACKAGE(SDL REQUIRED)
-	FIND_PACKAGE(SDL_image REQUIRED)
-	SET(LIBS ${LIBS} ${SDL_LIBRARY} ${SDLIMAGE_LIBRARY})
-	SET(LIBS ${LIBS} "-framework Cocoa" "-framework Carbon")
-	SET(LIBS ${LIBS} crypto)
-	SET(LIBS ${LIBS} "-framework OpenAL")
-	SET(LIBS ${LIBS} "-logg" "-lvorbis" "-lvorbisfile")
+    SET(LIBS ${LIBS} SDL2 SDL2_image)
+    SET(LIBS ${LIBS} "-framework Cocoa" "-framework Carbon")
+    SET(LIBS ${LIBS} crypto)
+    SET(LIBS ${LIBS} "-framework OpenAL")
+    SET(LIBS ${LIBS} "-logg" "-lvorbis" "-lvorbisfile")
 else(APPLE)
-	SET(LIBS ${LIBS} SDL2 SDL2_image)
+    SET(LIBS ${LIBS} SDL2 SDL2_image)
 endif(APPLE)
 
 IF(WIN32)
-	SET(LIBS ${LIBS} SDL_mixer wsock32 wininet dbghelp
-				"${OLXROOTDIR}/build/msvc/libs/SDLmain.lib"
-				"${OLXROOTDIR}/build/msvc/libs/libxml2.lib"
-				"${OLXROOTDIR}/build/msvc/libs/NLstatic.lib"
-				"${OLXROOTDIR}/build/msvc/libs/libzip.lib"
-				"${OLXROOTDIR}/build/msvc/libs/zlib.lib"
-				"${OLXROOTDIR}/build/msvc/libs/bgd.lib")
+    SET(LIBS ${LIBS} SDL_mixer wsock32 wininet dbghelp
+    "${OLXROOTDIR}/build/msvc/libs/SDLmain.lib"
+    "${OLXROOTDIR}/build/msvc/libs/libxml2.lib"
+    "${OLXROOTDIR}/build/msvc/libs/NLstatic.lib"
+    "${OLXROOTDIR}/build/msvc/libs/libzip.lib"
+    "${OLXROOTDIR}/build/msvc/libs/zlib.lib"
+    "${OLXROOTDIR}/build/msvc/libs/bgd.lib")
 ELSEIF(APPLE)
-	link_directories(/Library/Frameworks/SDL_mixer.framework)
-	link_directories(/Library/Frameworks/SDL_image.framework)
+    link_directories(/Library/Frameworks/SDL_mixer.framework)
+    link_directories(/Library/Frameworks/SDL_image.framework)
 ELSEIF(MINGW_CROSS_COMPILE)
 
 ELSE()
-	EXEC_PROGRAM(sdl2-config ARGS --libs OUTPUT_VARIABLE SDLLIBS)
-	STRING(REGEX REPLACE "[\r\n]" " " SDLLIBS "${SDLLIBS}")
+    IF(NOT USE_VCPKG)
+        EXEC_PROGRAM(sdl2-config ARGS --libs OUTPUT_VARIABLE SDLLIBS)
+        STRING(REGEX REPLACE "[\r\n]" " " SDLLIBS "${SDLLIBS}")
+    ENDIF(NOT USE_VCPKG)
 ENDIF(WIN32)
 
 if(UNIX)
-	IF (NOT HAWKNL_BUILTIN)
-		SET(LIBS ${LIBS} NL)
-	ENDIF (NOT HAWKNL_BUILTIN)
-	IF (NOT LIBZIP_BUILTIN)
-		SET(LIBS ${LIBS} zip)
-	ENDIF (NOT LIBZIP_BUILTIN)
-	IF (NOT LIBLUA_BUILTIN)
-		EXEC_PROGRAM(pkg-config ARGS lua5.1 --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #Search for lua5.1 first because newer versions seem to be incompatible
-		IF(NOT LIBLUA_NAME)
-			EXEC_PROGRAM(pkg-config ARGS lua-5.1 --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #On some systems, e.g. Fedora, it may be lua-5.1
-		ENDIF(NOT LIBLUA_NAME)
-		IF(NOT LIBLUA_NAME)
-			EXEC_PROGRAM(pkg-config ARGS lua51 --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #On Arch Linux pkg-config wants lua51 even though the result is still -llua5.1 -lm...
-		ENDIF(NOT LIBLUA_NAME)
-		IF(NOT LIBLUA_NAME)
-			MESSAGE(WARNING "No Lua 5.1 found - searching for default Lua, but it may not work. You may have to install Lua 5.1 packages or use the built-in library")
-			EXEC_PROGRAM(pkg-config ARGS lua --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #Search for lua if neither found
-		ENDIF(NOT LIBLUA_NAME)
-		IF(NOT LIBLUA_NAME)
-			MESSAGE(WARNING "No Lua found by pkg-config - trying default Lua, but it may not work. Make sure that Lua 5.1 packages are installed, or use the built-in library") 
-			SET(LIBLUA_NAME lua) #Set default if nothing works, although this will likely lead to errors
-		ENDIF(NOT LIBLUA_NAME)
-		SET(LIBS ${LIBS} ${LIBLUA_NAME})
-	ENDIF (NOT LIBLUA_BUILTIN)
-	IF(X11)
-		SET(LIBS ${LIBS} X11)
-	ENDIF(X11)
-	IF (STLPORT)
-		SET(LIBS ${LIBS} stlportstlg)
-	ENDIF (STLPORT)
-	IF (G15)
-		SET(LIBS ${LIBS} g15daemon_client g15render)
-	ENDIF (G15)
+    IF (NOT HAWKNL_BUILTIN)
+        SET(LIBS ${LIBS} NL)
+    ENDIF (NOT HAWKNL_BUILTIN)
+    IF (NOT LIBZIP_BUILTIN)
+        SET(LIBS ${LIBS} zip)
+    ENDIF (NOT LIBZIP_BUILTIN)
+    IF (NOT LIBLUA_BUILTIN)
+        EXEC_PROGRAM(pkg-config ARGS lua5.1 --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #Search for lua5.1 first because newer versions seem to be incompatible
+        IF(NOT LIBLUA_NAME)
+            EXEC_PROGRAM(pkg-config ARGS lua-5.1 --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #On some systems, e.g. Fedora, it may be lua-5.1
+        ENDIF(NOT LIBLUA_NAME)
+        IF(NOT LIBLUA_NAME)
+            EXEC_PROGRAM(pkg-config ARGS lua51 --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #On Arch Linux pkg-config wants lua51 even though the result is still -llua5.1 -lm...
+        ENDIF(NOT LIBLUA_NAME)
+        IF(NOT LIBLUA_NAME)
+            MESSAGE(WARNING "No Lua 5.1 found - searching for default Lua, but it may not work. You may have to install Lua 5.1 packages or use the built-in library")
+            EXEC_PROGRAM(pkg-config ARGS lua --libs --silence-errors OUTPUT_VARIABLE LIBLUA_NAME) #Search for lua if neither found
+        ENDIF(NOT LIBLUA_NAME)
+        IF(NOT LIBLUA_NAME)
+            MESSAGE(WARNING "No Lua found by pkg-config - trying default Lua, but it may not work. Make sure that Lua 5.1 packages are installed, or use the built-in library")
+            SET(LIBLUA_NAME lua) #Set default if nothing works, although this will likely lead to errors
+        ENDIF(NOT LIBLUA_NAME)
+        SET(LIBS ${LIBS} ${LIBLUA_NAME})
+    ENDIF (NOT LIBLUA_BUILTIN)
+    IF(X11)
+        SET(LIBS ${LIBS} X11)
+    ENDIF(X11)
+    IF (STLPORT)
+        SET(LIBS ${LIBS} stlportstlg)
+    ENDIF (STLPORT)
+    IF (G15)
+        SET(LIBS ${LIBS} g15daemon_client g15render)
+    ENDIF (G15)
 
-	SET(LIBS ${LIBS} ${SDLLIBS} xml2 z)
-	IF(NOT MINGW_CROSS_COMPILE)
-		SET(LIBS ${LIBS} ${SDLLIBS} pthread)
-	ENDIF(NOT MINGW_CROSS_COMPILE)
+    SET(LIBS ${LIBS} ${SDLLIBS} xml2 z)
+    IF(NOT MINGW_CROSS_COMPILE)
+        SET(LIBS ${LIBS} ${SDLLIBS} pthread)
+    ENDIF(NOT MINGW_CROSS_COMPILE)
 endif(UNIX)
 
 IF (NOT DEDICATED_ONLY)
-	if(APPLE)
-                SET(LIBS ${LIBS} gd)
-		#SET(LIBS ${LIBS} "-framework GD")
-	elseif(UNIX)
-                SET(LIBS ${LIBS} gd)
-	endif(APPLE)
+    if(APPLE)
+        SET(LIBS ${LIBS} gd)
+        #SET(LIBS ${LIBS} "-framework GD")
+    elseif(UNIX)
+        SET(LIBS ${LIBS} gd)
+    endif(APPLE)
 ENDIF (NOT DEDICATED_ONLY)
 
 IF(MINGW_CROSS_COMPILE)
-	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
+    SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
 
-ADD_DEFINITIONS('-D SYSTEM_DATA_DIR=\"${SYSTEM_DATA_DIR}\"')
+# Use vcpkg dependencies if enabled
+IF(USE_VCPKG)
+    MESSAGE(STATUS "Using vcpkg for dependency management")
+    # Clear the manually-configured libraries and use vcpkg's find_package() instead
+    SET(LIBS "")
+    include(${OLXROOTDIR}/CMakeOlxVcpkg.cmake)
+ENDIF(USE_VCPKG)
+
+ADD_DEFINITIONS(-DSYSTEM_DATA_DIR=\"${SYSTEM_DATA_DIR}\")

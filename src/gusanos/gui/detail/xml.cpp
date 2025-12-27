@@ -49,7 +49,7 @@ struct XMLHandler
 	
 	void error(std::string err)
 	{
-		cerr << err << endl;
+		cerr << err << std::endl;
 	}
 	
 	void beginTag(std::string const& label)

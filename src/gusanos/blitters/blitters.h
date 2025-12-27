@@ -12,18 +12,21 @@
 #include "CodeAttributes.h"
 
 // TODO: correct check if we should include MMX/SSE code
-#if !defined(WIN32) && (SDL_BYTEORDER == SDL_LIL_ENDIAN)
+// Exclude ARM architectures from SIMD code (no MMX/SSE on ARM)
+#if !defined(WIN32) && (SDL_BYTEORDER == SDL_LIL_ENDIAN) && \
+    !defined(__arm__) && !defined(__aarch64__) && !defined(_M_ARM) && !defined(_M_ARM64)
 #define HAS_MMX (cpu_capabilities & CPU_MMX)
 #define HAS_SSE (cpu_capabilities & CPU_SSE)
 #define HAS_MMXSSE (cpu_capabilities & CPU_MMXPLUS)
 #define BUILTIN_MMXSSE
-#else  // TODO: currently buggy on Windows
+#else  // TODO: currently buggy on Windows, not available on ARM
 #define HAS_MMX (false)
 #define HAS_SSE (false)
 #define HAS_MMXSSE (false)
 
-#if defined(WIN32)
-// built in anyway, it is still needed for linking
+#if defined(WIN32) && !defined(_M_ARM) && !defined(_M_ARM64) && !defined(_M_X64) && !defined(_WIN64)
+// built in anyway, it is still needed for linking (x86 only, not x64)
+// x64 does not support inline assembly, so we disable SIMD blitters on x64
 #define BUILTIN_MMXSSE
 #endif
 
@@ -86,12 +89,16 @@ void rectfill_add_16(ALLEGRO_BITMAP* where, int x1, int y1, int x2, int y2, Pixe
 void rectfill_blend_16(ALLEGRO_BITMAP* where, int x1, int y1, int x2, int y2, Pixel colour, int fact);
 
 void rectfill_add_32(ALLEGRO_BITMAP* where, int x1, int y1, int x2, int y2, Pixel colour, int fact);
+#ifdef BUILTIN_MMXSSE
 void rectfill_add_32_mmx(ALLEGRO_BITMAP* where, int x1, int y1, int x2, int y2, Pixel colour, int fact);
+#endif
 void rectfill_blend_32(ALLEGRO_BITMAP* where, int x1, int y1, int x2, int y2, Pixel colour, int fact);
 
 void hline_add_16(ALLEGRO_BITMAP* where, int x1, int y1, int x2, Pixel colour, int fact);
 void hline_add_32(ALLEGRO_BITMAP* where, int x1, int y1, int x2, Pixel colour, int fact);
+#ifdef BUILTIN_MMXSSE
 void hline_add_32_mmx(ALLEGRO_BITMAP* where, int x1, int y1, int x2, Pixel colour, int fact);
+#endif
 void hline_blend_16(ALLEGRO_BITMAP* where, int x1, int y1, int x2, Pixel colour, int fact);
 void hline_blend_32(ALLEGRO_BITMAP* where, int x1, int y1, int x2, Pixel colour, int fact);
 
@@ -102,28 +109,42 @@ void line_blend(ALLEGRO_BITMAP* where, int x, int y, int destx, int desty, Pixel
 void line_add(ALLEGRO_BITMAP* where, int x, int y, int destx, int desty, Pixel colour, int fact);
 
 void drawSprite_add_16(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#ifdef BUILTIN_MMXSSE
 void drawSprite_add_16_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#endif
 void drawSprite_blend_16(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#ifdef BUILTIN_MMXSSE
 void drawSprite_blend_16_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#endif
 void drawSprite_blendalpha_32_to_16(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
 void drawSprite_blendtint_8_to_16(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact, int color);
 void drawSprite_multsec_32_with_8(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, ALLEGRO_BITMAP* secondary, int x, int y, int sx, int sy, int cutl, int cutt, int cutr, int cutb);
 void drawSprite_mult_8_to_16(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb);
 
 void drawSprite_add_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#ifdef BUILTIN_MMXSSE
 void drawSprite_add_32_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#endif
 void drawSprite_blend_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#ifdef BUILTIN_MMXSSE
 void drawSprite_blend_32_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#endif
 void drawSprite_blendalpha_32_to_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#ifdef BUILTIN_MMXSSE
 void drawSprite_blendalpha_32_to_32_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact);
+#endif
 void drawSprite_blendtint_8_to_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb, int fact, int color);
 void drawSprite_mult_8_to_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb);
+#ifdef BUILTIN_MMXSSE
 void drawSprite_mult_8_to_32_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int cutl, int cutt, int cutr, int cutb);
+#endif
 
 void drawSpriteLine_add_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int x1, int y1, int x2, int fact);
 void drawSpriteLine_add_16(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int x1, int y1, int x2, int fact);
 void drawSpriteLine_add_8(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int x1, int y1, int x2, int fact);
+#ifdef BUILTIN_MMXSSE
 void drawSpriteLine_add_8_mmx_sse(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, int x1, int y1, int x2, int fact);
+#endif
 void drawSpriteRotate_solid_32(ALLEGRO_BITMAP* where, ALLEGRO_BITMAP* from, int x, int y, double angle);
 } // namespace Blitters
 
@@ -154,6 +175,7 @@ using Blitters::line_add;
 			else Blitters::f_##_8 x_ ; \
 		break; }
 		
+#ifdef BUILTIN_MMXSSE
 #define SELECT_ALL_MMX_SSE8(f_, x_) \
 	switch(bitmap_color_depth(where)) { \
 		case 16: Blitters::f_##_16 x_ ; break; \
@@ -162,7 +184,11 @@ using Blitters::line_add;
 			if(HAS_MMXSSE || HAS_SSE) Blitters::f_##_8_mmx_sse x_ ; \
 			else Blitters::f_##_8 x_ ; \
 		break; }
+#else
+#define SELECT_ALL_MMX_SSE8(f_, x_) SELECT_ALL(f_, x_)
+#endif
 		
+#ifdef BUILTIN_MMXSSE
 #define SELECT_MMX32(f_, x_) \
 	switch(bitmap_color_depth(where)) { \
 		case 16: Blitters::f_##_16 x_ ; break; \
@@ -170,7 +196,11 @@ using Blitters::line_add;
 			if(HAS_MMX) Blitters::f_##_32_mmx x_ ; \
 			else Blitters::f_##_32 x_ ; \
 		break; }
+#else
+#define SELECT_MMX32(f_, x_) SELECT(f_, x_)
+#endif
 			
+#ifdef BUILTIN_MMXSSE
 #define SELECT_SSE32(f_, x_) \
 	switch(bitmap_color_depth(where)) { \
 		case 16: Blitters::f_##_16 x_ ; break; \
@@ -178,7 +208,11 @@ using Blitters::line_add;
 			if(HAS_SSE) Blitters::f_##_32_sse x_ ; \
 			else Blitters::f_##_32 x_ ; \
 		break; }
+#else
+#define SELECT_SSE32(f_, x_) SELECT(f_, x_)
+#endif
 		
+#ifdef BUILTIN_MMXSSE
 #define SELECT_MMX_SSE_32(f_, x_) \
 	switch(bitmap_color_depth(where)) { \
 		case 16: Blitters::f_##_16 x_ ; break; \
@@ -186,7 +220,11 @@ using Blitters::line_add;
 			if(HAS_MMXSSE || HAS_SSE) Blitters::f_##_32_mmx_sse x_ ; \
 			else Blitters::f_##_32 x_ ; \
 		break; }
+#else
+#define SELECT_MMX_SSE_32(f_, x_) SELECT(f_, x_)
+#endif
 		
+#ifdef BUILTIN_MMXSSE
 #define SELECT_MMX_SSE(f_, x_) \
 	switch(bitmap_color_depth(where)) { \
 		case 16: \
@@ -196,7 +234,11 @@ using Blitters::line_add;
 			if(HAS_MMXSSE || HAS_SSE) Blitters::f_##_32_mmx_sse x_ ; \
 			else Blitters::f_##_32 x_ ; \
 		break; }
+#else
+#define SELECT_MMX_SSE(f_, x_) SELECT(f_, x_)
+#endif
 		
+#ifdef BUILTIN_MMXSSE
 #define SELECT_SSE(f_, x_) \
 	switch(bitmap_color_depth(where)) { \
 		case 16: \
@@ -207,6 +249,9 @@ using Blitters::line_add;
 			if(HAS_SSE) Blitters::f_##_32_sse x_ ; \
 			else Blitters::f_##_32 x_ ; \
 		break; }
+#else
+#define SELECT_SSE(f_, x_) SELECT(f_, x_)
+#endif
 		
 #define SELECT2(f_, a_, b_) \
 	switch(bitmap_color_depth(where)) { \

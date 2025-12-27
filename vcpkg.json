@@ -1,0 +1,52 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "openlierox",
+  "version-string": "0.59",
+  "dependencies": [
+    "sdl2",
+    {
+      "name": "sdl2-image",
+      "default-features": false
+    },
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": ["mbedtls"]
+    },
+    {
+      "name": "libxml2",
+      "default-features": false
+    },
+    "icu",
+    "zlib",
+    {
+      "name": "libgd",
+      "platform": "!windows"
+    },
+    "openal-soft",
+    {
+      "name": "freealut",
+      "platform": "!windows"
+    },
+    "libvorbis",
+    "libogg",
+    "boost-algorithm",
+    "boost-array",
+    "boost-assign",
+    "boost-bind",
+    "boost-config",
+    "boost-crc",
+    "boost-filesystem",
+    "boost-function",
+    "boost-lambda",
+    "boost-lexical-cast",
+    "boost-pool",
+    "boost-preprocessor",
+    "boost-random",
+    "boost-signals2",
+    "boost-type-traits",
+    "boost-typeof",
+    "boost-utility"
+  ],
+  "builtin-baseline": "74e6536215718009aae747d86d84b78376bf9e09"
+}

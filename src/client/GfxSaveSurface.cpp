@@ -12,12 +12,12 @@
 #include "Options.h"
 #include "FindFile.h"
 
-#ifndef DEDICATED_ONLY
+#if !defined(DEDICATED_ONLY) && defined(HAVE_LIBGD)
 #include <gd.h>
 #endif
 
 
-#ifndef DEDICATED_ONLY
+#if !defined(DEDICATED_ONLY) && defined(HAVE_LIBGD)
 ///////////////////////
 // Converts the SDL_surface to gdImagePtr
 static gdImagePtr SDLSurface2GDImage(SDL_Surface* src) {
@@ -95,8 +95,12 @@ bool SaveSurface(SDL_Surface * image, const std::string& FileName, int Format, c
 		return true;
 	}
 	
+#if defined(DEDICATED_ONLY) || !defined(HAVE_LIBGD)
 #ifdef DEDICATED_ONLY
 	warnings << "SaveSurface: cannot use something else than BMP in dedicated-only-mode" << endl;
+#else
+	warnings << "SaveSurface: cannot use something else than BMP without LibGD support" << endl;
+#endif
 	return false;
 	
 #else

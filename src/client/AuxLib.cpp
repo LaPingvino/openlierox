@@ -256,10 +256,16 @@ void *GetWindowHandle()
 {
 	SDL_SysWMinfo info;
 	SDL_VERSION(&info.version);
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	SDL_Window* window = SDL_GetMouseFocus();
+	if(!window || !SDL_GetWindowWMInfo(window, &info))
+		return 0;
+	return (void *)info.info.win.window;
+#else
 	if(!SDL_GetWMInfo(&info))
 		return 0;
-
 	return (void *)info.window;
+#endif
 }
 #endif
 
@@ -768,7 +774,11 @@ void SubclassWindow()
 		return;
 
 #pragma warning(disable:4311)  // Temporarily disable, the typecast is OK here
+#ifdef _WIN64
+	wpOriginal = SetWindowLongPtr((HWND)GetWindowHandle(),GWLP_WNDPROC,(LONG_PTR)(&WindowProc));
+#else
 	wpOriginal = SetWindowLong((HWND)GetWindowHandle(),GWL_WNDPROC,(LONG)(&WindowProc));
+#endif
 #pragma warning(default:4311) // Enable the warning
 	Subclassed = true;
 }
@@ -780,7 +790,11 @@ void UnSubclassWindow()
 	if (!Subclassed)
 		return;
 
+#ifdef _WIN64
+	SetWindowLongPtr((HWND)GetWindowHandle(),GWLP_WNDPROC, wpOriginal);
+#else
 	SetWindowLong((HWND)GetWindowHandle(),GWL_WNDPROC, wpOriginal);
+#endif
 
 	Subclassed = false;
 }

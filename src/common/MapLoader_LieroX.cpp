@@ -20,7 +20,7 @@
 #include "PixelFunctors.h"
 #include "Cache.h"
 #include <zlib.h>
-#ifndef DEDICATED_ONLY
+#if !defined(DEDICATED_ONLY) && defined(HAVE_LIBGD)
 #include <gd.h>
 #endif
 
@@ -295,7 +295,7 @@ class ML_LieroX : public MapLoad {
 	// Load the high-resolution images
 	void LoadLevelImageHiRes(CMap* m, uint8_t *pSource, Uint32 size)
 	{
-#ifndef DEDICATED_ONLY // Hi-res images are not needed for dedicated server, it uses only material image which is in low-res data
+#if !defined(DEDICATED_ONLY) && defined(HAVE_LIBGD) // Hi-res images are not needed for dedicated server, it uses only material image which is in low-res data
 		
 		if(bDedicated) return;
 		

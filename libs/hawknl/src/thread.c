@@ -40,6 +40,9 @@ static unsigned  __stdcall threadfunc(void *arg)
     
     return (unsigned)((*func)(args));
 }
+#if !defined (_WIN32_WCE)
+#include <process.h>
+#endif /* !(_WIN32_WCE) */
 #if defined (_WIN32_WCE)
 #define _beginthreadex(security, \
 		       stack_size, \
@@ -53,9 +56,7 @@ static unsigned  __stdcall threadfunc(void *arg)
 		     arg, \
 		     flags, \
 		     pid)
-#else /* !(_WIN32_WCE) */
-#include <process.h>
-#endif /* !(_WIN32_WCE) */
+#endif /* (_WIN32_WCE) */
 
 #else /* !NL_WIN_THREADS */
 /* POSIX systems */

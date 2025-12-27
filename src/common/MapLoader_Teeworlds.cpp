@@ -1104,7 +1104,7 @@ Result TWGroup::read(ML_Teeworlds* l, char* p, char* end) {
 	else
 		name = "";
 
-	if(p > end) return "group item data is invalid, read behind end by " + itoa(p - end) + " bytes";
+	if(p > end) return "group item data is invalid, read behind end by " + itoa((int)(p - end)) + " bytes";
 	return true;
 }
 

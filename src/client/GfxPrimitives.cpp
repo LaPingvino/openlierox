@@ -16,7 +16,7 @@
 // Created 12/11/01
 // By Jason Boettcher
 
-#ifndef DEDICATED_ONLY
+#if !defined(DEDICATED_ONLY) && defined(HAVE_LIBGD)
 #define USE_GD_FOR_IMAGE_LOADING 1
 #endif
 

@@ -1,0 +1,231 @@
+name: Build OpenLieroX
+
+on:
+  push:
+    branches: ["0.59", "main"]
+    tags: ["*"]
+  pull_request:
+    branches: ["0.59", "main"]
+
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            vcpkg_triplet: x64-linux
+            zig_target: x86_64-linux-gnu
+            use_zig: false
+            cmake_flags: -DX11=ON -DHASBFD=OFF
+          - name: linux-arm64
+            os: ubuntu-latest
+            vcpkg_triplet: arm64-linux-zig
+            zig_target: aarch64-linux-gnu
+            use_zig: true
+            cmake_flags: -DX11=ON -DHASBFD=OFF
+
+          - name: macos-x64
+            os: macos-15-intel # Intel Mac (replaces deprecated macos-13)
+            vcpkg_triplet: x64-osx
+            zig_target: x86_64-macos-none
+            use_zig: false
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+          - name: macos-arm64
+            os: macos-latest # Apple Silicon (macos-15)
+            vcpkg_triplet: arm64-osx
+            zig_target: aarch64-macos-none
+            use_zig: false
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+
+          - name: windows-x64
+            os: windows-latest
+            vcpkg_triplet: x64-windows
+            zig_target: x86_64-windows-gnu
+            use_zig: false
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            exe_suffix: .exe
+          - name: windows-arm64
+            os: windows-latest
+            vcpkg_triplet: x64-windows
+            zig_target: aarch64-windows-gnu
+            use_zig: true
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            exe_suffix: .exe
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build git curl wget ca-certificates \
+            autoconf automake autoconf-archive libtool libtool-bin m4 \
+            pkg-config gettext autopoint gperf \
+            libltdl-dev libx11-dev libxext-dev libicu-dev
+          echo "autoconf: $(autoconf --version | head -n1 || true)"
+          echo "automake: $(automake --version | head -n1 || true)"
+          echo "m4: $(m4 --version | head -n1 || true)"
+          echo "libtool: $(libtool --version 2>/dev/null | head -n1 || true)"
+
+      - name: Install autotools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew update || true
+          # Install autotools and ninja; autoconf-archive contains many macros used by autoreconf
+          brew install autoconf automake autoconf-archive libtool pkg-config gettext gperf m4 ninja || true
+          # Ensure Xcode command line tools are selected (no-op if already correct)
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+          echo "xcode-select: $(xcode-select -p || true)"
+          echo "clang: $(clang --version | head -n1 || true)"
+          echo "make: $(make --version 2>/dev/null | head -n1 || true)"
+          echo "ninja: $(ninja --version 2>/dev/null | head -n1 || true)"
+          echo "autoreconf: $(/opt/homebrew/bin/autoreconf --version 2>/dev/null | head -n1 || true)"
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: "74e6536215718009aae747d86d84b78376bf9e09"
+
+      - name: Debug VCPKG environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          echo "VCPKG_ROOT=${VCPKG_ROOT:-not-set}"
+          if [ -n "${VCPKG_ROOT:-}" ]; then
+            echo "VCPKG_ROOT contents:"
+            ls -lah "${VCPKG_ROOT}" || true
+          fi
+          echo "Workspace top-level:"
+          ls -lah "${GITHUB_WORKSPACE}" | sed -n '1,200p' || true
+
+      - name: Create Zig wrapper scripts (cross-compilation only)
+        if: matrix.use_zig
+        shell: bash
+        run: |
+          mkdir -p ${{ github.workspace }}/zig-bin
+          cat > ${{ github.workspace }}/zig-bin/zig-cc << EOF
+          #!/bin/bash
+          exec zig cc -target ${{ matrix.zig_target }} "\$@"
+          EOF
+          cat > ${{ github.workspace }}/zig-bin/zig-cxx << EOF
+          #!/bin/bash
+          exec zig c++ -target ${{ matrix.zig_target }} "\$@"
+          EOF
+          chmod +x ${{ github.workspace }}/zig-bin/zig-cc
+          chmod +x ${{ github.workspace }}/zig-bin/zig-cxx
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        env:
+          CC: ${{ matrix.use_zig && format('{0}/zig-bin/zig-cc', github.workspace) || '' }}
+          CXX: ${{ matrix.use_zig && format('{0}/zig-bin/zig-cxx', github.workspace) || '' }}
+          CMAKE_MAKE_PROGRAM: /usr/local/bin/ninja
+        run: |
+          set -euo pipefail
+          echo "Using VCPKG_ROOT=${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}"
+          VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
+          if [ ! -x "$VPKG" ]; then
+            VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
+          fi
+          # On macOS prefer Ninja if available to avoid missing 'make' on some runners
+          if [ "$(uname)" = "Darwin" ]; then
+            export CMAKE_GENERATOR=Ninja
+            export CMAKE_MAKE_PROGRAM=$(which ninja)
+            echo "Using CMAKE_GENERATOR=$CMAKE_GENERATOR"
+            echo "Using CMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
+          fi
+          retry_cmd() {
+            n=0
+            until "$@" || [ $n -ge 2 ]; do
+              n=$((n+1))
+              echo "Command failed, retry #$n..."
+              sleep $((n*2))
+            done
+            return $?
+          }
+          retry_cmd "$VPKG" install --triplet=${{ matrix.vcpkg_triplet }} --overlay-triplets=${{ github.workspace }}/triplets --x-install-root=${{ github.workspace }}/vcpkg_installed
+          echo "vcpkg installed list:"
+          "$VPKG" list || true
+
+      - name: Configure CMake (native build)
+        if: ${{ !matrix.use_zig }}
+        shell: bash
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
+            -DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}/triplets \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUSE_VCPKG=ON \
+            -DHAWKNL_BUILTIN=Yes \
+            -DLIBZIP_BUILTIN=Yes \
+            -DLIBLUA_BUILTIN=Yes \
+            -DDEBUG=OFF \
+            ${{ matrix.cmake_flags }}
+
+      - name: Configure CMake (Zig cross-compilation)
+        if: matrix.use_zig
+        shell: bash
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
+            -DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}/triplets \
+            -DCMAKE_C_COMPILER=${{ github.workspace }}/zig-bin/zig-cc \
+            -DCMAKE_CXX_COMPILER=${{ github.workspace }}/zig-bin/zig-cxx \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUSE_VCPKG=ON \
+            -DHAWKNL_BUILTIN=Yes \
+            -DLIBZIP_BUILTIN=Yes \
+            -DLIBLUA_BUILTIN=Yes \
+            -DDEBUG=OFF \
+            ${{ matrix.cmake_flags }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build build -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+
+      - name: List build output
+        shell: bash
+        run: ls -lah build/bin/ || ls -lah build/Release/ || ls -lah build/Debug/ || true
+
+      - name: Upload artifact (Unix)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlierox-${{ matrix.name }}
+          path: build/bin/openlierox
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlierox-${{ matrix.name }}
+          path: build/bin/openlierox.exe

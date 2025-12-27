@@ -40,7 +40,8 @@ template<unsigned int B>
 struct ctpow<B, 0> { static unsigned int const value = 1; };
 
 // MSVC lrintf implementation, taken from http://www.dpvreony.co.uk/blog/post/63
-#ifdef _MSC_VER
+// Modern MSVC (VS2015+) has lrintf as intrinsic, only define for older versions
+#if defined(_MSC_VER) && _MSC_VER < 1900
 INLINE long lrintf(float f){
 
 #ifdef _M_X64

@@ -241,6 +241,7 @@ void OlxWriteCoreDump(const char* fileName)
 #include <sys/wait.h>
 #include <cstring>
 #include <cstdio>
+#include <climits>
 
 #if !defined(GCOREDUMPER)
 static void GdbWriteCoreDump(const char* fname) {

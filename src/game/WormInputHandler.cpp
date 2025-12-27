@@ -28,6 +28,7 @@
 #include "gusanos/network.h"
 //#include "gusanos/allegro.h"
 #include <list>
+#include <iostream>
 
 #include "CServer.h"
 #include "CServerConnection.h"
@@ -244,7 +245,7 @@ void CWormInputHandler::selectWeapons( vector< WeaponType* > const& weaps )
 	}
 	if ( network.isClient() && m_node ) {
 		if(weaps.size() > gusGame.options.maxWeapons) {
-			cerr << "ERROR: Requested a too large weapon selection" << endl;
+			std::cerr << "ERROR: Requested a too large weapon selection" << std::endl;
 			return;
 		}
 		

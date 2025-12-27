@@ -161,7 +161,7 @@ Network::~Network()
 
 void Network::log(char const* msg)
 {
-	cerr << "Gusanos Network: " << msg << endl;
+	cerr << "Gusanos Network: " << msg << std::endl;
 }
 
 void Network::init()
