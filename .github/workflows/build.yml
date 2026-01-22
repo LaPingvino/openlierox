@@ -53,7 +53,7 @@ jobs:
             exe_suffix: .exe
           - name: windows-arm64
             os: windows-latest
-            vcpkg_triplet: x64-windows
+            vcpkg_triplet: arm64-windows
             zig_target: aarch64-windows-gnu
             use_zig: true
             cmake_flags: -DX11=OFF -DHASBFD=OFF
@@ -107,6 +107,13 @@ jobs:
           echo "ninja: $(ninja --version 2>/dev/null | head -n1 || true)"
           echo "autoreconf: $(/opt/homebrew/bin/autoreconf --version 2>/dev/null | head -n1 || true)"
 
+      - name: Install build tools (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install ninja -y
+          echo "ninja: $(ninja --version || true)"
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
@@ -125,34 +132,55 @@ jobs:
           echo "Workspace top-level:"
           ls -lah "${GITHUB_WORKSPACE}" | sed -n '1,200p' || true
 
-      - name: Create Zig wrapper scripts (cross-compilation only)
-        if: matrix.use_zig
+      - name: Create Zig wrapper scripts (cross-compilation only, Unix)
+        if: matrix.use_zig && runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p ${{ github.workspace }}/zig-bin
-          cat > ${{ github.workspace }}/zig-bin/zig-cc << EOF
+          cat > ${{ github.workspace }}/zig-bin/zig-cc << 'EOF'
           #!/bin/bash
-          exec zig cc -target ${{ matrix.zig_target }} "\$@"
+          exec zig cc -target ${{ matrix.zig_target }} "$@"
           EOF
-          cat > ${{ github.workspace }}/zig-bin/zig-cxx << EOF
+          cat > ${{ github.workspace }}/zig-bin/zig-cxx << 'EOF'
           #!/bin/bash
-          exec zig c++ -target ${{ matrix.zig_target }} "\$@"
+          exec zig c++ -target ${{ matrix.zig_target }} "$@"
           EOF
           chmod +x ${{ github.workspace }}/zig-bin/zig-cc
           chmod +x ${{ github.workspace }}/zig-bin/zig-cxx
 
+      - name: Create Zig wrapper scripts (cross-compilation only, Windows)
+        if: matrix.use_zig && runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p ${{ github.workspace }}/zig-bin
+          cat > ${{ github.workspace }}/zig-bin/zig-cc.bat << 'EOF'
+          @echo off
+          zig cc -target ${{ matrix.zig_target }} %*
+          EOF
+          cat > ${{ github.workspace }}/zig-bin/zig-cxx.bat << 'EOF'
+          @echo off
+          zig c++ -target ${{ matrix.zig_target }} %*
+          EOF
+
       - name: Install vcpkg dependencies
         shell: bash
         env:
-          CC: ${{ matrix.use_zig && format('{0}/zig-bin/zig-cc', github.workspace) || '' }}
-          CXX: ${{ matrix.use_zig && format('{0}/zig-bin/zig-cxx', github.workspace) || '' }}
-          CMAKE_MAKE_PROGRAM: /usr/local/bin/ninja
+          CC: ${{ matrix.use_zig && (runner.os == 'Windows' && format('{0}/zig-bin/zig-cc.bat', github.workspace) || format('{0}/zig-bin/zig-cc', github.workspace)) || '' }}
+          CXX: ${{ matrix.use_zig && (runner.os == 'Windows' && format('{0}/zig-bin/zig-cxx.bat', github.workspace) || format('{0}/zig-bin/zig-cxx', github.workspace)) || '' }}
         run: |
           set -euo pipefail
           echo "Using VCPKG_ROOT=${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}"
-          VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
-          if [ ! -x "$VPKG" ]; then
+          if [ "$(uname -s)" = "Linux" ] || [ "$(uname -s)" = "Darwin" ]; then
             VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
+          else
+            VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg.exe"
+          fi
+          if [ ! -x "$VPKG" ]; then
+            if [ "$(uname -s)" = "Linux" ] || [ "$(uname -s)" = "Darwin" ]; then
+              VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
+            else
+              VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg.exe"
+            fi
           fi
           # On macOS prefer Ninja if available to avoid missing 'make' on some runners
           if [ "$(uname)" = "Darwin" ]; then
@@ -178,7 +206,12 @@ jobs:
         if: ${{ !matrix.use_zig }}
         shell: bash
         run: |
+          CMAKE_EXTRA_FLAGS=""
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            CMAKE_EXTRA_FLAGS="-G Ninja"
+          fi
           cmake -B build \
+            $CMAKE_EXTRA_FLAGS \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
             -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
             -DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}/triplets \
@@ -194,12 +227,22 @@ jobs:
         if: matrix.use_zig
         shell: bash
         run: |
+          CMAKE_EXTRA_FLAGS=""
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ZIG_CC="${{ github.workspace }}/zig-bin/zig-cc.bat"
+            ZIG_CXX="${{ github.workspace }}/zig-bin/zig-cxx.bat"
+            CMAKE_EXTRA_FLAGS="-G Ninja"
+          else
+            ZIG_CC="${{ github.workspace }}/zig-bin/zig-cc"
+            ZIG_CXX="${{ github.workspace }}/zig-bin/zig-cxx"
+          fi
           cmake -B build \
+            $CMAKE_EXTRA_FLAGS \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
             -DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }} \
             -DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}/triplets \
-            -DCMAKE_C_COMPILER=${{ github.workspace }}/zig-bin/zig-cc \
-            -DCMAKE_CXX_COMPILER=${{ github.workspace }}/zig-bin/zig-cxx \
+            -DCMAKE_C_COMPILER="$ZIG_CC" \
+            -DCMAKE_CXX_COMPILER="$ZIG_CXX" \
             -DCMAKE_BUILD_TYPE=Release \
             -DUSE_VCPKG=ON \
             -DHAWKNL_BUILTIN=Yes \
