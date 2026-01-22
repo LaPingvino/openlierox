@@ -82,10 +82,10 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build git curl wget ca-certificates \
-            autoconf automake autoconf-archive libtool libtool-bin m4 \
-            pkg-config gettext autopoint gperf \
+          sudo apt-get install -y --no-install-recommends 
+            build-essential cmake ninja-build git curl wget ca-certificates 
+            autoconf automake autoconf-archive libtool libtool-bin m4 
+            pkg-config gettext autopoint gperf 
             libltdl-dev libx11-dev libxext-dev libicu-dev
           echo "autoconf: $(autoconf --version | head -n1 || true)"
           echo "automake: $(automake --version | head -n1 || true)"
@@ -109,10 +109,10 @@ jobs:
 
       - name: Install build tools (Windows)
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
           choco install ninja -y
-          echo "ninja: $(ninja --version || true)"
+          Write-Host "ninja: $(ninja --version | Select-Object -First 1)"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
@@ -170,22 +170,24 @@ jobs:
         run: |
           set -euo pipefail
           echo "Using VCPKG_ROOT=${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}"
-          if [ "$(uname -s)" = "Linux" ] || [ "$(uname -s)" = "Darwin" ]; then
-            VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
-          else
+          # Determine vcpkg executable based on runner OS
+          if [ "${RUNNER_OS:-}" = "Windows" ]; then
             VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg.exe"
+          else
+            VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
           fi
           if [ ! -x "$VPKG" ]; then
-            if [ "$(uname -s)" = "Linux" ] || [ "$(uname -s)" = "Darwin" ]; then
-              VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
-            else
-              VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg.exe"
-            fi
+            echo "vcpkg not executable yet: $VPKG"
           fi
-          # On macOS prefer Ninja if available to avoid missing 'make' on some runners
-          if [ "$(uname)" = "Darwin" ]; then
+          # Ensure Ninja is used as the generator and set CMAKE_MAKE_PROGRAM appropriately
+          if [ "${RUNNER_OS:-}" = "Windows" ]; then
             export CMAKE_GENERATOR=Ninja
-            export CMAKE_MAKE_PROGRAM=$(which ninja)
+            export CMAKE_MAKE_PROGRAM=ninja.exe
+            echo "Using CMAKE_GENERATOR=$CMAKE_GENERATOR"
+            echo "Using CMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
+          else
+            export CMAKE_GENERATOR=Ninja
+            export CMAKE_MAKE_PROGRAM=$(which ninja || echo /usr/bin/ninja)
             echo "Using CMAKE_GENERATOR=$CMAKE_GENERATOR"
             echo "Using CMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
           fi
