@@ -27,6 +27,12 @@ jobs:
             zig_target: x86_64-linux-gnu
             use_zig: false
             cmake_flags: -DX11=ON -DHASBFD=OFF
+          - name: linux-arm64
+            os: ubuntu-latest
+            vcpkg_triplet: arm64-linux-zig
+            zig_target: aarch64-linux-gnu
+            use_zig: true
+            cmake_flags: -DX11=ON -DHASBFD=OFF
 
           - name: macos-x64
             os: macos-15-intel # Intel Mac (replaces deprecated macos-13)
@@ -49,13 +55,14 @@ jobs:
             msvc_arch: amd64
             cmake_flags: -DX11=OFF -DHASBFD=OFF
             exe_suffix: .exe
-
-          # linux-arm64 and windows-arm64 are temporarily disabled. The cross
-          # toolchains work, but the project's source tree pulls in x86-only
-          # MMX/SSE intrinsics (src/gusanos/blitters/mmx.h) that break the
-          # ARM64 compile, and vcpkg's default Linux toolchain hardcodes
-          # aarch64-linux-gnu-gcc for arm64-linux which conflicts with our
-          # zig-based cross approach. To re-enable, both need fixing.
+          - name: windows-arm64
+            os: windows-latest
+            vcpkg_triplet: arm64-windows
+            zig_target: aarch64-windows-gnu
+            use_zig: false
+            msvc_arch: amd64_arm64
+            cmake_flags: -DX11=OFF -DHASBFD=OFF
+            exe_suffix: .exe
 
     steps:
       - uses: actions/checkout@v4
