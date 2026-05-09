@@ -31,7 +31,7 @@ jobs:
             os: ubuntu-latest
             vcpkg_triplet: arm64-linux-zig
             zig_target: aarch64-linux-gnu
-            use_zig: true
+            use_zig: false
             cmake_flags: -DX11=ON -DHASBFD=OFF
 
           - name: macos-x64
@@ -92,6 +92,12 @@ jobs:
             autoconf automake autoconf-archive libtool libtool-bin m4 \
             pkg-config gettext autopoint gperf \
             libltdl-dev libx11-dev libxext-dev libicu-dev
+          if [ "${{ matrix.name }}" = "linux-arm64" ]; then
+            sudo apt-get install -y --no-install-recommends \
+              gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            echo "CC=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+            echo "CXX=aarch64-linux-gnu-g++" >> "$GITHUB_ENV"
+          fi
           echo "autoconf: $(autoconf --version | head -n1 || true)"
           echo "automake: $(automake --version | head -n1 || true)"
           echo "m4: $(m4 --version | head -n1 || true)"
