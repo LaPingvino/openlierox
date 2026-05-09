@@ -223,6 +223,25 @@ jobs:
             -DDEBUG=OFF \
             ${{ matrix.cmake_flags }}
 
+      - name: Dump vcpkg buildtree logs on configure failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          BT="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/buildtrees"
+          if [ -d "$BT" ]; then
+            for f in $(find "$BT" -maxdepth 4 -type f \( -name 'config-*-err.log' -o -name 'config-*-out.log' -o -name 'install-*.log' \) 2>/dev/null); do
+              echo "===== $f ====="
+              sed -n '1,200p' "$f" || true
+            done
+          else
+            echo "no buildtrees dir at $BT"
+          fi
+          if [ -f build/vcpkg-manifest-install.log ]; then
+            echo "===== build/vcpkg-manifest-install.log ====="
+            sed -n '1,200p' build/vcpkg-manifest-install.log || true
+          fi
+
       - name: Build
         shell: bash
         run: cmake --build build -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
