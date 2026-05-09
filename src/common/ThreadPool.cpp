@@ -10,6 +10,20 @@
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #include <process.h>
+// SDL2's SDL_CreateThread macro on Windows expands to a call referencing
+// _beginthreadex/_endthreadex at the call site. <process.h> declares them,
+// but some MSVC + Universal CRT configurations don't expose them in the
+// translation unit by the time the macro expands. Forward-declare explicitly
+// so the call site always compiles; the declarations match the standard
+// signatures and are extern "C", so they're harmless if process.h already
+// provided them.
+extern "C" {
+uintptr_t __cdecl _beginthreadex(
+	void *_Security, unsigned _StackSize,
+	unsigned (__stdcall *_StartAddress)(void *),
+	void *_ArgList, unsigned _InitFlag, unsigned *_ThrdAddr);
+void __cdecl _endthreadex(unsigned _Retval);
+}
 #endif
 #include <SDL.h>
 #include <SDL_thread.h>

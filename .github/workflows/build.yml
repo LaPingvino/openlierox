@@ -8,7 +8,10 @@ on:
     branches: ["0.59", "main"]
 
 env:
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # The 'x-gha' binary-cache backend was removed in recent vcpkg, so leaving
+  # it on produces noisy warnings and no caching. Disable binary caching for
+  # now; it can be reintroduced later via NuGet on GitHub Packages.
+  VCPKG_BINARY_SOURCES: "clear"
 
 jobs:
   build:
@@ -28,7 +31,7 @@ jobs:
             os: ubuntu-latest
             vcpkg_triplet: arm64-linux-zig
             zig_target: aarch64-linux-gnu
-            use_zig: true
+            use_zig: false
             cmake_flags: -DX11=ON -DHASBFD=OFF
 
           - name: macos-x64
@@ -49,13 +52,15 @@ jobs:
             vcpkg_triplet: x64-windows
             zig_target: x86_64-windows-gnu
             use_zig: false
+            msvc_arch: amd64
             cmake_flags: -DX11=OFF -DHASBFD=OFF
             exe_suffix: .exe
           - name: windows-arm64
             os: windows-latest
             vcpkg_triplet: arm64-windows
             zig_target: aarch64-windows-gnu
-            use_zig: true
+            use_zig: false
+            msvc_arch: amd64_arm64
             cmake_flags: -DX11=OFF -DHASBFD=OFF
             exe_suffix: .exe
 
@@ -82,11 +87,17 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends 
-            build-essential cmake ninja-build git curl wget ca-certificates 
-            autoconf automake autoconf-archive libtool libtool-bin m4 
-            pkg-config gettext autopoint gperf 
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build git curl wget ca-certificates \
+            autoconf automake autoconf-archive libtool libtool-bin m4 \
+            pkg-config gettext autopoint gperf \
             libltdl-dev libx11-dev libxext-dev libicu-dev
+          if [ "${{ matrix.name }}" = "linux-arm64" ]; then
+            sudo apt-get install -y --no-install-recommends \
+              gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            echo "CC=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+            echo "CXX=aarch64-linux-gnu-g++" >> "$GITHUB_ENV"
+          fi
           echo "autoconf: $(autoconf --version | head -n1 || true)"
           echo "automake: $(automake --version | head -n1 || true)"
           echo "m4: $(m4 --version | head -n1 || true)"
@@ -113,6 +124,12 @@ jobs:
         run: |
           choco install ninja -y
           Write-Host "ninja: $(ninja --version | Select-Object -First 1)"
+
+      - name: Setup MSVC environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
@@ -147,6 +164,8 @@ jobs:
           EOF
           chmod +x ${{ github.workspace }}/zig-bin/zig-cc
           chmod +x ${{ github.workspace }}/zig-bin/zig-cxx
+          echo "CC=${{ github.workspace }}/zig-bin/zig-cc" >> "$GITHUB_ENV"
+          echo "CXX=${{ github.workspace }}/zig-bin/zig-cxx" >> "$GITHUB_ENV"
 
       - name: Create Zig wrapper scripts (cross-compilation only, Windows)
         if: matrix.use_zig && runner.os == 'Windows'
@@ -161,48 +180,8 @@ jobs:
           @echo off
           zig c++ -target ${{ matrix.zig_target }} %*
           EOF
-
-      - name: Install vcpkg dependencies
-        shell: bash
-        env:
-          CC: ${{ matrix.use_zig && (runner.os == 'Windows' && format('{0}/zig-bin/zig-cc.bat', github.workspace) || format('{0}/zig-bin/zig-cc', github.workspace)) || '' }}
-          CXX: ${{ matrix.use_zig && (runner.os == 'Windows' && format('{0}/zig-bin/zig-cxx.bat', github.workspace) || format('{0}/zig-bin/zig-cxx', github.workspace)) || '' }}
-        run: |
-          set -euo pipefail
-          echo "Using VCPKG_ROOT=${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}"
-          # Determine vcpkg executable based on runner OS
-          if [ "${RUNNER_OS:-}" = "Windows" ]; then
-            VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg.exe"
-          else
-            VPKG="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/vcpkg"
-          fi
-          if [ ! -x "$VPKG" ]; then
-            echo "vcpkg not executable yet: $VPKG"
-          fi
-          # Ensure Ninja is used as the generator and set CMAKE_MAKE_PROGRAM appropriately
-          if [ "${RUNNER_OS:-}" = "Windows" ]; then
-            export CMAKE_GENERATOR=Ninja
-            export CMAKE_MAKE_PROGRAM=ninja.exe
-            echo "Using CMAKE_GENERATOR=$CMAKE_GENERATOR"
-            echo "Using CMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
-          else
-            export CMAKE_GENERATOR=Ninja
-            export CMAKE_MAKE_PROGRAM=$(which ninja || echo /usr/bin/ninja)
-            echo "Using CMAKE_GENERATOR=$CMAKE_GENERATOR"
-            echo "Using CMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
-          fi
-          retry_cmd() {
-            n=0
-            until "$@" || [ $n -ge 2 ]; do
-              n=$((n+1))
-              echo "Command failed, retry #$n..."
-              sleep $((n*2))
-            done
-            return $?
-          }
-          retry_cmd "$VPKG" install --triplet=${{ matrix.vcpkg_triplet }} --overlay-triplets=${{ github.workspace }}/triplets --x-install-root=${{ github.workspace }}/vcpkg_installed
-          echo "vcpkg installed list:"
-          "$VPKG" list || true
+          echo "CC=${{ github.workspace }}/zig-bin/zig-cc.bat" >> "$GITHUB_ENV"
+          echo "CXX=${{ github.workspace }}/zig-bin/zig-cxx.bat" >> "$GITHUB_ENV"
 
       - name: Configure CMake (native build)
         if: ${{ !matrix.use_zig }}
@@ -252,6 +231,25 @@ jobs:
             -DLIBLUA_BUILTIN=Yes \
             -DDEBUG=OFF \
             ${{ matrix.cmake_flags }}
+
+      - name: Dump vcpkg buildtree logs on configure failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          BT="${VCPKG_ROOT:-$GITHUB_WORKSPACE/vcpkg}/buildtrees"
+          if [ -d "$BT" ]; then
+            for f in $(find "$BT" -maxdepth 4 -type f \( -name 'config-*-err.log' -o -name 'config-*-out.log' -o -name 'install-*.log' \) 2>/dev/null); do
+              echo "===== $f ====="
+              sed -n '1,200p' "$f" || true
+            done
+          else
+            echo "no buildtrees dir at $BT"
+          fi
+          if [ -f build/vcpkg-manifest-install.log ]; then
+            echo "===== build/vcpkg-manifest-install.log ====="
+            sed -n '1,200p' build/vcpkg-manifest-install.log || true
+          fi
 
       - name: Build
         shell: bash

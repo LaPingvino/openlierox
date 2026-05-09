@@ -45,7 +45,9 @@
 #define ZIP_EXTERN
 #endif
 #endif
+#if _MSC_VER < 1900
 #define snprintf _snprintf
+#endif
 #define strcasecmp _stricmp
 #pragma warning( error: 4013 ) // Undefined function treated as error
 #endif

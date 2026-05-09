@@ -1,6 +1,11 @@
 #ifndef MMX_H
 #define MMX_H
 
+// MMX/SSE intrinsics are only available on x86. On non-x86 targets (e.g. ARM,
+// ARM64) this header is empty; the SIMD blitters in *_simd.cpp are themselves
+// gated by BUILTIN_MMXSSE in blitters.h, so they compile to nothing there.
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+
 #ifdef __GNUC__
 
 union mmx_reg
@@ -206,5 +211,7 @@ union mmx_reg
 #else
 #error "MMX capability only available on GCC!"
 #endif
+
+#endif // x86 architecture check
 
 #endif //MMX_H

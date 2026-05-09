@@ -74,7 +74,10 @@ IF(UNIX)
 ELSE(UNIX)
     IF(WIN32)
         SET(G15 OFF)
-        SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+        # Note: previously this forced HAWKNL_BUILTIN OFF on Windows because
+        # the legacy MSBuild project linked a prebuilt HawkNL .lib. The CMake
+        # build (CI) compiles HawkNL from libs/hawknl/src instead, so let the
+        # caller's option pass through.
         SET(X11 OFF)
     ELSE(WIN32)
     ENDIF(WIN32)
